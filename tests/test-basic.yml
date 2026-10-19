@@ -1,0 +1,58 @@
+name: Test basic usage
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Lint only the test workflow files themselves to keep the test self-contained.
+          # Use --no-online to avoid network calls to the GitHub API.
+          online: "false"
+          annotations: "false"
+          color: "false"
+          files: tests/test-basic.yml
+        continue-on-error: true
+      - name: Assert executable output is set
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "executable: $EXECUTABLE"
+          # The action should either succeed or fail with findings (exit 1),
+          # but the executable output should always be set when the install step ran.
+          if [ -z "$EXECUTABLE" ]; then
+            echo "FAIL: executable output is empty"
+            exit 1
+          fi
+          echo "PASS: executable output is '$EXECUTABLE'"
+      - name: Assert executable exists and is runnable
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+        run: |
+          echo "Checking executable: $EXECUTABLE"
+          if [ ! -f "$EXECUTABLE" ]; then
+            echo "FAIL: executable file does not exist at '$EXECUTABLE'"
+            exit 1
+          fi
+          if [ ! -x "$EXECUTABLE" ]; then
+            echo "FAIL: executable is not executable"
+            exit 1
+          fi
+          echo "PASS: executable exists and is runnable"
+      - name: Assert jactionlint version
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+        run: |
+          VERSION_OUTPUT="$("$EXECUTABLE" --version 2>&1 || true)"
+          echo "version output: $VERSION_OUTPUT"
+          if echo "$VERSION_OUTPUT" | grep -qE '[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "PASS: version output contains a version number"
+          else
+            echo "FAIL: version output does not contain a version number: $VERSION_OUTPUT"
+            exit 1
+          fi

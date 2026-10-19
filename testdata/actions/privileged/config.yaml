@@ -1,0 +1,8 @@
+rules:
+  template-injection:
+    level: error
+    pedantic: false
+  github-env: error
+  untrusted-checkout: error
+  unpinned-uses: off
+  pipeline-without-pipefail: off

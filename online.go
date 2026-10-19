@@ -1,0 +1,269 @@
+package jactionlint
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+)
+
+// onlineSettings is how a Linter reaches GitHub. The session is created when the first file which
+// needs it is checked and is shared by all files, so that the answers about a repository are
+// asked for once per run. The online options of that first file's configuration, over those of
+// LinterOptions, apply to the whole run.
+type onlineSettings struct {
+	enabled bool
+	// off is LinterOptions.OnlineOff: the configuration cannot turn the online checks on.
+	off    bool
+	client GitHubClient
+	ttl    time.Duration
+	ctx    context.Context
+	// opts are LinterOptions.OnlineOptions: the command line, which wins over the configuration.
+	opts OnlineOptions
+
+	once sync.Once
+	sess *onlineSession
+	err  error
+	mode OnlineMode
+}
+
+// enabledBy reports whether the configuration turns the online checks on: "online: true", or a
+// "mode" in "online-options" (a mode only makes sense online, so it turns them on). An explicit
+// "online: false" wins over the mode: the checks stay off unless --online asks for them.
+func (o *onlineSettings) enabledBy(cfg *Config) bool {
+	if o.off || cfg == nil {
+		return false
+	}
+	if cfg.present["online"] && !cfg.Online {
+		return false
+	}
+	return cfg.Online || cfg.OnlineOptions.Mode != OnlineModeDefault
+}
+
+// onlineOn reports whether the online checks run for a file linted with the configuration: --online, or
+// the configuration (see enabledBy).
+func (l *Linter) onlineOn(cfg *Config) bool {
+	return l.online.enabled || l.online.enabledBy(cfg)
+}
+
+// onlineSession returns the session of the online rules, or nil when the online checks are off for
+// the configuration. The error says the checks were asked for in a build that cannot make them.
+func (l *Linter) onlineSession(cfg *Config) (*onlineSession, error) {
+	o := &l.online
+	if !o.enabled && !o.enabledBy(cfg) {
+		return nil, nil
+	}
+	o.once.Do(func() {
+		var cfgOpts OnlineOptions
+		if cfg != nil {
+			cfgOpts = cfg.OnlineOptions
+		}
+		eff := cfgOpts.overlay(o.opts)
+		o.mode = eff.Mode
+		client := o.client
+		var images ImageDigestClient
+		if client == nil {
+			if !onlineSupported {
+				o.err = fmt.Errorf("\"online: true\" in the configuration cannot be used: %w", errOnlineUnsupported)
+				return
+			}
+			ttl := defaultOnlineCacheTTL
+			switch {
+			case o.opts.CacheTTL != nil:
+				ttl = *o.opts.CacheTTL
+			case o.ttl > 0:
+				ttl = o.ttl
+			case o.ttl < 0:
+				ttl = 0
+			case cfgOpts.CacheTTL != nil:
+				ttl = *cfgOpts.CacheTTL
+			}
+			// A host named on the command line, in the environment or by a config of the user is the
+			// user's choice. The config file of a repository is not: it gets no token.
+			trusted := o.opts.APIURL != "" || eff.APIURL == "" || (cfg != nil && cfg.userOwned)
+			c, err := newDefaultGitHubClient(defaultClientOptions{
+				Options: eff, OptionsTrusted: trusted, TTL: ttl,
+				Notify: l.warnOnline, Note: l.noteOnline, Debug: l.debug, Verbose: l.logf, Context: o.ctx,
+			})
+			if err != nil {
+				o.err = err
+				return
+			}
+			client = c
+			images = defaultImageClient(c, eff.Mode.Offline())
+		}
+		o.sess = newOnlineSession(o.ctx, client, l.warnOnline)
+		o.sess.images = images
+		o.sess.offline = eff.Mode.Offline()
+		o.sess.allow, o.sess.deny = eff.Allow, eff.Deny
+		o.sess.detail = l.logf
+	})
+	return o.sess, o.err
+}
+
+// logf writes a line to the log output with --verbose.
+func (l *Linter) logf(format string, args ...any) {
+	l.log(fmt.Sprintf(format, args...))
+}
+
+// OnlineSkipped returns how many GitHub lookups of the online checks were skipped because they failed
+// (rate limit, 404, 403, server error, timeout, no network, nothing cached in the offline mode). The
+// checks which needed them report nothing for those actions. Lookups left out by the allow and deny
+// lists are not counted. It is zero when the online checks did not run.
+func (l *Linter) OnlineSkipped() int {
+	if l.online.sess == nil {
+		return 0
+	}
+	return l.online.sess.skippedLookups()
+}
+
+// OnlineCoverage says how complete the online checks of a run were, so that a consumer can tell "checked
+// and nothing found" from "not checked". It is evidence about the run, not a trust guarantee: a resolved
+// ref or a timestamp says what GitHub (or the cache) answered, not that the ref was never repointed.
+type OnlineCoverage struct {
+	// Status is "complete" (every lookup the checks made was answered, apart from the excluded
+	// repositories) or "incomplete" (SkippedLookups is not zero). The struct is absent when the online
+	// checks were not turned on.
+	Status string `json:"status"`
+	// Mode is "online" (the network was used), "cache" (only the disk cache was used) and
+	// "strict" or "cache,strict" for the modes which fail the run on a skipped lookup.
+	Mode string `json:"mode,omitempty"`
+	// SkippedLookups counts the lookups which failed (see OnlineSkipped). The checks which needed them
+	// reported nothing for those actions.
+	SkippedLookups int `json:"skippedLookups"`
+	// ExcludedRepositories counts the repositories which the allow and deny lists left out. They were
+	// not checked, on purpose.
+	ExcludedRepositories int `json:"excludedRepositories"`
+	// Evidence says where the answers came from. "cache" means that they may be older than the cache
+	// TTL of the run allows to tell: the cache has no freshness guarantee in this mode.
+	Evidence string `json:"evidence,omitempty"`
+	// SkippedBy counts the skipped lookups by the kind of failure ("rate limit", "unauthorized", "forbidden", "not found",
+	// "server error", "timeout", "network", "not cached" or "other"). It is omitted when nothing was skipped.
+	SkippedBy map[string]int `json:"skippedBy,omitempty"`
+	// Answers says where the answers which the checks used came from. It is omitted when the client does not
+	// track them (a custom GitHubClient), which means unknown, not "all fresh".
+	Answers *OnlineAnswers `json:"answers,omitempty"`
+}
+
+// OnlineAnswers counts the answers the online checks used, by where they came from, and bounds how old the
+// cached ones are. It is evidence about the run, not a guarantee about GitHub: an answer says what GitHub said
+// when it was asked, and a ref that resolved to a commit may be moved later.
+type OnlineAnswers struct {
+	// Network is the number of answers GitHub gave in this run, including a conditional request (304) that
+	// confirmed a cached answer.
+	Network int `json:"network"`
+	// Cache is the number of answers read from the disk cache without asking GitHub: younger than
+	// CacheTTLSeconds, or of any age in the cache mode.
+	Cache int `json:"cache"`
+	// Stale is the number of expired cached answers used because the rate limit left no other.
+	Stale int `json:"stale"`
+	// Immutable is the number of cached answers older than the TTL which were used without asking because they are
+	// about a file at a full commit SHA, which cannot change. They are not in Cache and do not set
+	// OldestFetched: the age limit of Cache does not apply to them. It is omitted when there were none.
+	Immutable int `json:"immutable,omitempty"`
+	// OldestFetched is the oldest time at which a cached answer that was used (Cache and Stale) was received.
+	// The timestamp source is the clock of the machine running jactionlint at the moment it last received the
+	// answer from GitHub, or confirmed it with a 304. It is not a date from GitHub and says nothing about when
+	// the repository, tag or branch last changed: an old commit does not prove that a tag was not repointed
+	// recently. RFC 3339, UTC. It is omitted when no cached answer was used.
+	OldestFetched string `json:"oldestFetched,omitempty"`
+	// CacheTTLSeconds is how long a cached answer is used without asking again, so a Cache answer is at most
+	// this old. It is the TTL rounded up to whole seconds, so it is never tighter than the TTL in force. It is omitted in the cache mode, which has no age limit, and with a TTL of zero.
+	CacheTTLSeconds int `json:"cacheTtlSeconds,omitempty"`
+}
+
+// answerStatsSource is implemented by the GitHub client of jactionlint, which knows where its answers came from.
+type answerStatsSource interface {
+	answerStats() OnlineAnswers
+}
+
+// OnlineCoverage returns the coverage of the online checks, or nil when they were not turned on.
+func (l *Linter) OnlineCoverage() *OnlineCoverage {
+	if l.online.sess == nil {
+		if l.online.enabled {
+			return &OnlineCoverage{Status: "complete", Mode: "online"} // nothing needed a lookup
+		}
+		return nil
+	}
+	c := &OnlineCoverage{
+		Status:               "complete",
+		Mode:                 string(l.online.mode),
+		SkippedLookups:       l.online.sess.skippedLookups(),
+		ExcludedRepositories: l.online.sess.excludedRepos(),
+		Evidence:             "network",
+	}
+	if c.Mode == "" {
+		c.Mode = "online"
+	}
+	if l.online.mode.Offline() {
+		c.Evidence = "cache"
+	}
+	if c.SkippedLookups > 0 {
+		c.Status = "incomplete"
+		c.SkippedBy = l.online.sess.skippedByKind()
+	}
+	if src, ok := l.online.sess.client.(answerStatsSource); ok {
+		a := src.answerStats()
+		c.Answers = &a
+	}
+	return c
+}
+
+// OnlineReport is the document of --online-report: the coverage of the online checks of the run, in a file
+// so that --format json (a bare array) and jsonl (one finding a line) keep their shape. Status is "disabled"
+// when the online checks were off, which is told apart from "complete" (checked, nothing missing).
+type OnlineReport struct {
+	// Version is the version of this document. It changes only when a field changes meaning.
+	Version int `json:"version"`
+	OnlineCoverage
+}
+
+// writeOnlineReport writes the OnlineReport of the run to the file. It never changes the findings or the
+// exit status.
+func (l *Linter) writeOnlineReport(path string) error {
+	rep := OnlineReport{Version: 1, OnlineCoverage: OnlineCoverage{Status: "disabled"}}
+	if c := l.OnlineCoverage(); c != nil {
+		rep.OnlineCoverage = *c
+	}
+	b, err := json.MarshalIndent(rep, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
+}
+
+// OnlineFailed reports whether the run was asked to fail (the "strict" online mode) and a lookup was
+// skipped, so that a check which could not run does not pass silently.
+func (l *Linter) OnlineFailed() bool {
+	return l.online.mode.Strict() && l.OnlineSkipped() > 0
+}
+
+// warnOnline tells the user something about the online checks once per run. Like the warnings about
+// the deprecated keys of the configuration it goes to the log output, or into the output document
+// of a structured format.
+func (l *Linter) warnOnline(msg string) {
+	l.reportOnline("warning:", msg)
+}
+
+// noteOnline is warnOnline for a notice, which is no problem of the run: it is printed as a "note:".
+func (l *Linter) noteOnline(msg string) {
+	l.reportOnline("note:", msg)
+}
+
+func (l *Linter) reportOnline(prefix, msg string) {
+	l.notesMu.Lock()
+	for _, n := range l.notes {
+		if n == msg {
+			l.notesMu.Unlock()
+			return
+		}
+	}
+	l.notes = append(l.notes, msg)
+	l.notesMu.Unlock()
+	if structured(l.printer) {
+		return
+	}
+	fmt.Fprintln(l.logOut, prefix, msg)
+}

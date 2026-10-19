@@ -1,0 +1,91 @@
+package jactionlint
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestRuleIfCond(t *testing.T) {
+	tests := []struct {
+		cond  string
+		valid bool
+	}{
+		{"", true},
+		{"true", false},
+		{"false", false},
+		{"true || false", false},
+		{"github.ref_name == 'foo'", true},
+		{"${{ true }}", false},
+		{"${{ contains('foo', 'f') }}", false},
+		{"${{ github.ref_name == 'foo' }}", true},
+		{"${{ foo }}", true},
+		// The newlines at the end of a block scalar are trimmed by GitHub, so they are not extra characters
+		{"${{ foo }}\n", true},
+		{"${{ foo }}\r\n", true},
+		{"${{ foo }}\n\n", true},
+		{"${{ true }}\n", false}, // a constant, which is another rule
+		{"${{ foo }}\n ", false},
+		{"${{ foo }} \n", false},
+		{"${{ foo }}\nbar", false},
+		{"\n${{ foo }}\n", false},
+		{"${{ foo }} ", false},
+		{" ${{ foo }}", false},
+		{"${{ true }} && ${{ true }}", false},
+		// White space which the lexer does not skip is trimmed before the expression is parsed.
+		{"true\u00a0", false},
+		{"\u00a0false", false},
+		{"\u2003true\u2003", false},
+		{"github.ref_name == 'foo'\u00a0", true},
+		{"${{ true }}\u00a0", false},
+		{"\u00a0${{ true }}", false},
+		{"${{ true }} && x", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%q at step", tc.cond), func(t *testing.T) {
+			var s Step
+			if len(tc.cond) > 0 {
+				s.If = &String{Value: tc.cond, Pos: &Pos{}}
+			}
+
+			r := NewRuleIfCond()
+			if err := r.VisitStep(&s); err != nil {
+				t.Fatal(err)
+			}
+
+			errs := r.Errs()
+			if tc.valid && len(errs) > 0 {
+				t.Fatalf("wanted no error but have %q for condition %q", errs, tc.cond)
+			}
+			if !tc.valid && len(errs) != 1 {
+				t.Fatalf("wanted one error but have %q for condition %q", errs, tc.cond)
+			}
+		})
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%q at job", tc.cond), func(t *testing.T) {
+			var j Job
+			if len(tc.cond) > 0 {
+				j.If = &String{Value: tc.cond, Pos: &Pos{}}
+				j.Snapshot = &Snapshot{
+					ImageName: &String{Value: "test", Pos: &Pos{}},
+					If:        &String{Value: tc.cond, Pos: &Pos{}},
+				}
+			}
+
+			r := NewRuleIfCond()
+			if err := r.VisitJobPre(&j); err != nil {
+				t.Fatal(err)
+			}
+
+			errs := r.Errs()
+			if tc.valid && len(errs) > 0 {
+				t.Fatalf("wanted no error but have %q for condition %q", errs, tc.cond)
+			}
+			if !tc.valid && len(errs) != 2 {
+				t.Fatalf("wanted one error but have %q for condition %q", errs, tc.cond)
+			}
+		})
+	}
+}

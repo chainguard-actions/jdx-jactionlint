@@ -1,0 +1,3 @@
+obfuscation
+bot-conditions
+misfeature

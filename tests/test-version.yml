@@ -1,0 +1,41 @@
+name: Test version input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: "2.2.0"
+          online: "false"
+          annotations: "false"
+          color: "false"
+          files: tests/test-version.yml
+        continue-on-error: true
+      - name: Assert executable output is set
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "executable: $EXECUTABLE"
+          if [ -z "$EXECUTABLE" ]; then
+            echo "FAIL: executable output is empty"
+            exit 1
+          fi
+          echo "PASS: executable output is '$EXECUTABLE'"
+      - name: Assert version is 2.2.0
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+        run: |
+          VERSION_OUTPUT="$("$EXECUTABLE" --version 2>&1 || true)"
+          echo "version output: $VERSION_OUTPUT"
+          if echo "$VERSION_OUTPUT" | grep -q "2.2.0"; then
+            echo "PASS: version output contains '2.2.0'"
+          else
+            echo "FAIL: version output does not contain '2.2.0': $VERSION_OUTPUT"
+            exit 1
+          fi

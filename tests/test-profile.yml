@@ -1,0 +1,39 @@
+name: Test profile input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          profile: correctness
+          online: "false"
+          annotations: "false"
+          color: "false"
+          files: tests/test-profile.yml
+        continue-on-error: true
+      - name: Assert executable output is set
+        env:
+          EXECUTABLE: ${{ steps.action.outputs.executable }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "executable: $EXECUTABLE"
+          if [ -z "$EXECUTABLE" ]; then
+            echo "FAIL: executable output is empty"
+            exit 1
+          fi
+          echo "PASS: executable output is '$EXECUTABLE'"
+      - name: Assert action ran (not skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with outcome '$OUTCOME'"

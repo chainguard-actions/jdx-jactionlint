@@ -1,0 +1,778 @@
+package jactionlint
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"syscall"
+
+	"github.com/bmatcuk/doublestar/v4"
+	"go.yaml.in/yaml/v4"
+)
+
+// IgnorePattern is one pattern of an "ignore" list. It is either a rule ID such as
+// "unpinned-uses", which ignores every error with the ID, or a regular expression matched against
+// the error messages.
+type IgnorePattern struct {
+	// ID is the rule ID to ignore. It is empty when the pattern is a regular expression.
+	ID string
+	// Regexp is the regular expression to match error messages. It is nil when the pattern is a rule ID.
+	Regexp *regexp.Regexp
+	// Retired is the retired rule ID the pattern was written with (see RenamedRule), or empty. ID is then
+	// the rule it was merged into, and the pattern matches only the findings which had the retired ID.
+	Retired string
+}
+
+// ParseIgnorePattern parses a pattern of --ignore, "paths.*.ignore" and inline ignore comments. When the
+// pattern is exactly the ID of a rule listed in Rules, it ignores the errors of that rule. Otherwise it
+// is compiled as a regular expression which is matched against the error messages.
+func ParseIgnorePattern(s string) (IgnorePattern, error) {
+	if _, ok := LookupRule(s); ok {
+		return IgnorePattern{ID: s}, nil
+	}
+	if rr, ok := lookupRenamed(s); ok {
+		return IgnorePattern{ID: rr.ID, Retired: rr.Old}, nil
+	}
+	r, err := regexp.Compile(s)
+	if err != nil {
+		return IgnorePattern{}, err
+	}
+	return IgnorePattern{Regexp: r}, nil
+}
+
+// String returns the source of the pattern.
+func (p IgnorePattern) String() string {
+	if p.Regexp != nil {
+		return p.Regexp.String()
+	}
+	if p.Retired != "" {
+		return p.Retired
+	}
+	return p.ID
+}
+
+// deprecation returns the warning about a retired rule ID, or an empty string.
+func (p IgnorePattern) deprecation() string {
+	if rr, ok := lookupRenamed(p.Retired); ok {
+		return rr.renamedMessage()
+	}
+	return ""
+}
+
+// Match returns whether the pattern matches the error.
+func (p IgnorePattern) Match(err *Error) bool {
+	if p.Regexp != nil {
+		return p.Regexp.MatchString(err.Message)
+	}
+	if p.ID == "" || p.ID != err.ID {
+		return false
+	}
+	return p.Retired == "" || p.Retired == err.RetiredID
+}
+
+// IgnorePatterns is a list of patterns. These patterns are used for filtering errors by matching the
+// rule IDs or the error messages.
+type IgnorePatterns []IgnorePattern
+
+// Match returns whether the given error should be ignored due to the "ignore" configuration.
+func (pats IgnorePatterns) Match(err *Error) bool {
+	for _, p := range pats {
+		if p.Match(err) {
+			return true
+		}
+	}
+	return false
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (pats *IgnorePatterns) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("yaml: \"ignore\" must be a sequence node at line %d, column %d", n.Line, n.Column)
+	}
+	rs := make([]IgnorePattern, 0, len(n.Content))
+	for _, p := range n.Content {
+		if p.Kind != yaml.ScalarNode || (p.Tag != "" && p.Tag != "!!str") {
+			return fmt.Errorf("yaml: \"ignore\" items must be strings at line %d, column %d", p.Line, p.Column)
+		}
+		r, err := ParseIgnorePattern(p.Value)
+		if err != nil {
+			return fmt.Errorf("invalid regular expression %q in \"ignore\" at line %d, column %d: %w", p.Value, n.Line, n.Column, err)
+		}
+		rs = append(rs, r)
+	}
+	*pats = rs
+	return nil
+}
+
+// PathConfig is a configuration for specific file path pattern. This is for values of the "paths" mapping
+// in the configuration file.
+type PathConfig struct {
+	// Ignore is a list of patterns. They are used for ignoring errors by matching to the error messages.
+	// It is similar to the "--ignore" command line option.
+	Ignore IgnorePatterns `yaml:"ignore"`
+}
+
+// RuleConfig is the configuration of one rule in the "rules" mapping of the configuration file. It
+// is either a level (`unpinned-uses: warn`) or a mapping with the level and the options of the rule
+// (`max-run-lines: {level: warn, max: 80}`). A mapping without "level" enables the rule at its
+// default level.
+type RuleConfig struct {
+	// Level is the severity of the findings of the rule. SeverityOff disables the rule.
+	Level Severity
+	// Options are the options of the rule. The values are int or float64 depending on RuleOption.Kind.
+	Options map[string]any
+
+	levelSet bool
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (rc *RuleConfig) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		switch n.Value {
+		case "true":
+			*rc = RuleConfig{} // The default level is filled in later
+			return nil
+		case "false":
+			*rc = RuleConfig{Level: SeverityOff, levelSet: true}
+			return nil
+		}
+		lv, err := ParseSeverity(n.Value)
+		if err != nil {
+			return fmt.Errorf("%w at line %d, column %d", err, n.Line, n.Column)
+		}
+		*rc = RuleConfig{Level: lv, levelSet: true}
+		return nil
+	case yaml.MappingNode:
+		out := RuleConfig{}
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value == "level" {
+				lv, err := ParseSeverity(v.Value)
+				if v.Kind != yaml.ScalarNode || err != nil {
+					return fmt.Errorf("\"level\" must be one of \"off\", \"info\", \"warn\" and \"error\" at line %d, column %d", v.Line, v.Column)
+				}
+				out.Level, out.levelSet = lv, true
+				continue
+			}
+			var val any
+			if err := v.Decode(&val); err != nil {
+				return err
+			}
+			if out.Options == nil {
+				out.Options = map[string]any{}
+			}
+			out.Options[k.Value] = val
+		}
+		*rc = out
+		return nil
+	}
+	return fmt.Errorf("a rule must be configured with a level or a mapping at line %d, column %d", n.Line, n.Column)
+}
+
+// Config is configuration of jactionlint. This struct instance is parsed from "jactionlint.yaml"
+// file usually put in ".github" directory.
+type Config struct {
+	// Profile selects the set of rules which are enabled by default: "correctness", "default" or
+	// "pedantic". The empty value means ProfileDefault. See Rules for which rules each profile enables.
+	// The retired names "strict" and "all" are read as "pedantic" with a deprecation warning.
+	Profile Profile `yaml:"profile"`
+	// Extends is a list of config files to inherit from. Relative paths are resolved from the directory
+	// of the config file listing them. Later files win over earlier ones, and the config file itself
+	// wins over all of them. ReadConfigFile loads them and merges them into the returned Config.
+	Extends []string `yaml:"extends"`
+	// Online turns on the online checks (see LinterOptions.Online) for the files this configuration
+	// applies to, like the --online flag does for the whole run. They query the GitHub API.
+	Online bool `yaml:"online"`
+	// Baseline controls the baseline of accepted findings (see "jactionlint --baseline-write"). "auto" (or
+	// true) applies the file .github/jactionlint-baseline.json when it exists, false or empty does not
+	// apply a baseline, and any other value is the path of the baseline file relative to the root of the
+	// repository, which must exist. The --baseline flag overrides it.
+	Baseline string `yaml:"baseline"`
+	// OnlineOptions tunes the online checks: the mode ("cache" for offline use from the disk cache,
+	// "strict" to fail when a lookup is skipped), the API URL of GitHub Enterprise Server, where the
+	// token comes from, which repositories may be looked up, and the cache and retry behavior. A mode
+	// of "cache" or "strict" turns the online checks on, unless "online: false" is written explicitly. They apply to the whole run: the
+	// run uses the configuration of the first file for which the online checks run.
+	OnlineOptions OnlineOptions `yaml:"online-options"`
+	// Rules sets the level and the options of each rule by rule ID. A rule not listed here follows the
+	// profile.
+	Rules map[string]RuleConfig `yaml:"rules"`
+	// SelfHostedRunner is configuration for self-hosted runner.
+	SelfHostedRunner struct {
+		// Labels is label names for self-hosted runner.
+		Labels []string `yaml:"labels"`
+		// StrictLabels makes the runner-label rule accept only the labels listed in Labels. When true, the
+		// built-in labels (GitHub-hosted runner labels and the preset self-hosted labels such as "self-hosted"
+		// and "linux") are reported as unknown unless they are explicitly listed in Labels.
+		StrictLabels bool `yaml:"strict-labels"`
+		// Providers names the hosted-runner providers whose labels the runner-label rule accepts (blacksmith,
+		// depot, namespace, runson, ubicloud and warpbuild). Nil, which is the default, accepts all of them; an
+		// empty list accepts none. Labels of other providers belong in Labels. It has no effect when StrictLabels is
+		// true.
+		Providers []string `yaml:"providers"`
+	} `yaml:"self-hosted-runner"`
+	// ConfigVariables is names of configuration variables used in the checked workflows. When this value is nil,
+	// property names of `vars` context will not be checked. Otherwise jactionlint will report a name which is not
+	// listed here as undefined config variables.
+	// https://docs.github.com/en/actions/learn-github-actions/variables
+	ConfigVariables []string `yaml:"config-variables"`
+	// ConfigSecrets is names of secrets used in the checked workflows. When this value is nil,
+	// property names of `secrets` context will not be checked. Otherwise jactionlint will report a name which is not
+	// listed here as undefined secrets.
+	// https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
+	ConfigSecrets []string `yaml:"config-secrets"`
+	// Paths is a "paths" mapping in the configuration file. The keys are glob patterns to match file paths.
+	// And the values are corresponding configurations applied to the file paths.
+	Paths map[string]PathConfig `yaml:"paths"`
+
+	// Ignores is the "ignores" list: findings to accept, matched by rule and by where they are (file,
+	// job, step, uses) instead of by line, so that they survive tools rewriting the workflow. See
+	// ConfigIgnore. The lists of the files listed in "extends" are concatenated, the extended files first.
+	Ignores []ConfigIgnore `yaml:"ignores"`
+
+	// RequiredActions is a "required-actions" list in the configuration file. Each item is an action (or
+	// reusable workflow) which must be used at least once in every checked workflow. The check is disabled
+	// when the list is empty.
+	RequiredActions []RequiredActionRule `yaml:"required-actions"`
+	// AssumeDefaultPermissions controls how the workflow-call permission check treats a caller that
+	// has no `permissions:` block at the workflow level and none on the calling job. Unset, nothing
+	// is assumed (the default token is a setting of the repository): only a scope that no default
+	// token has (`id-token`) is reported. "restricted" assumes GitHub's restricted default token
+	// (contents/packages: read, everything else: none). "permissive" assumes write on every scope
+	// except `id-token`, which always requires an explicit opt-in regardless of the repo-level
+	// Workflow permissions setting. Only affects callers
+	// with no permissions block anywhere; once any permissions block is declared, the check always
+	// runs against it.
+	AssumeDefaultPermissions *string `yaml:"assume-default-permissions"`
+
+	// Platform is the system which runs the workflows: "github" (the default) or "forgejo" (or "gitea", the same
+	// here). On Forgejo and Gitea a step can run an action from any host with `uses: https://host/owner/repo@ref`
+	// (actionlint#698), which is a malformed `uses:` on GitHub and stays an error there. Only the syntax and the
+	// pinning of such an action are checked: the metadata, the inputs and the online checks are those of GitHub.
+	Platform *string `yaml:"platform"`
+
+	// GeneratedFiles tells what to do with a file whose first comment says that a tool wrote it ("DO NOT EDIT",
+	// "automatically generated by gh-aw"): "skip-policy" (the default) does not report the rules of the policy and style
+	// groups there, since the author cannot act on them without changing the generator, "report" treats the file like any
+	// other, and "skip" reports nothing.
+	GeneratedFiles *string `yaml:"generated-files"`
+
+	// Fix configures "jactionlint --fix".
+	Fix FixConfig `yaml:"fix"`
+
+	// Shellcheck tunes the shellcheck integration: a shellcheckrc, more arguments and optional checks.
+	Shellcheck ShellcheckConfig `yaml:"shellcheck"`
+
+	// Path is the path of the file which the config was read from. It is empty when the config was
+	// parsed from bytes.
+	Path string `yaml:"-"`
+	// Deprecations are messages about deprecated keys the config file uses, for example the old
+	// "require-shell: true" which is replaced by the "rules" mapping. The config still works.
+	// "jactionlint --migrate-config" rewrites the file.
+	Deprecations []string `yaml:"-"`
+	// Notices are messages about the config file which are not warnings, for example that a file written
+	// for actionlint was read and which profile applies to it.
+	Notices []string `yaml:"-"`
+	// profileNotices are notices that are about the profile the config leaves to the default. They are
+	// dropped when --profile chooses one, because they would be wrong then (see Linter.warnDeprecations).
+	profileNotices []string
+
+	// present records which keys were written explicitly so that merging with the files listed in
+	// "extends" can tell a missing key from a zero value.
+	present map[string]bool
+	// userOwned is true for a config the user chose (the user-global file, --config-file or
+	// LinterOptions.Config) and false for the file of a repository, which anyone who can open a pull
+	// request controls. Only a user-owned config may point the online checks at a host which receives
+	// the token.
+	userOwned bool
+}
+
+// FixConfig is the "fix" mapping of the config file.
+type FixConfig struct {
+	// Rules restricts --fix to the fixes of the rules with these IDs. The --fix-rules flag overrides it. When
+	// the list is empty, the fixes of all rules are applied.
+	Rules []string `yaml:"rules"`
+}
+
+const (
+	// PlatformGitHub is the default value of the "platform" key of the config file.
+	PlatformGitHub = "github"
+	// PlatformForgejo is the value for Forgejo, which accepts `uses: https://host/owner/repo@ref`.
+	PlatformForgejo = "forgejo"
+	// PlatformGitea is the value for Gitea, which accepts the same.
+	PlatformGitea = "gitea"
+)
+
+// platformName is the configured platform: "github" unless the config says another one.
+func (c *Config) platformName() string {
+	if c == nil || c.Platform == nil {
+		return PlatformGitHub
+	}
+	return *c.Platform
+}
+
+// allowsURLUses reports whether a step can run an action by the URL of its repository: the platform is Forgejo or
+// Gitea. It can be called on a nil Config.
+func (c *Config) allowsURLUses() bool {
+	return c != nil && c.Platform != nil && (*c.Platform == PlatformForgejo || *c.Platform == PlatformGitea)
+}
+
+// AssumeDefaultPermissionsRestricted is the config value enabling the restricted-default assumption.
+const AssumeDefaultPermissionsRestricted = "restricted"
+
+// AssumeDefaultPermissionsPermissive is the config value enabling the permissive-default assumption.
+const AssumeDefaultPermissionsPermissive = "permissive"
+
+// PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
+// be relative to the root of the project.
+func (c *Config) PathConfigs(path string) []PathConfig {
+	path = filepath.ToSlash(path)
+
+	var ret []PathConfig
+	if c != nil {
+		for p, pc := range c.Paths {
+			// Glob patterns were validated in `ParseConfig()`
+			if doublestar.MatchUnvalidated(p, path) {
+				ret = append(ret, pc)
+			}
+		}
+	}
+	return ret
+}
+
+// ParseConfig parses the given bytes as an jactionlint config file. When deserializing the YAML file
+// or the config validation fails, this function returns an error. Unknown keys are errors too, with
+// a suggestion when the key looks like a typo of a known one. The "extends" key needs the path of the
+// file to find the files to inherit from so it is an error here; use ReadConfigFile.
+func ParseConfig(b []byte) (*Config, error) {
+	c, err := parseConfig(b)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.Extends) > 0 {
+		return nil, errors.New("\"extends\" can be used only in a config file. use ReadConfigFile to read it")
+	}
+	return c, nil
+}
+
+// parseConfig parses one config file without resolving "extends".
+func parseConfig(b []byte) (*Config, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(b, &root); err != nil {
+		msg := strings.ReplaceAll(err.Error(), "\n", " ")
+		return nil, errors.New(msg)
+	}
+	if err := validateConfigKeys(&root); err != nil {
+		return nil, err
+	}
+
+	var c Config
+	var legacy legacyConfig
+	if root.Kind != 0 {
+		if err := root.Decode(&c); err != nil {
+			msg := strings.ReplaceAll(err.Error(), "\n", " ")
+			return nil, errors.New(msg)
+		}
+		if err := root.Decode(&legacy); err != nil {
+			msg := strings.ReplaceAll(err.Error(), "\n", " ")
+			return nil, errors.New(msg)
+		}
+	}
+	c.present = presentKeys(&root)
+
+	if c.Profile != "" {
+		p, dep, err := parseConfigProfile(string(c.Profile))
+		if err != nil {
+			return nil, fmt.Errorf("%w in \"profile\"", err)
+		}
+		c.Profile = p
+		if dep != "" {
+			c.Deprecations = append(c.Deprecations, dep)
+		}
+	}
+	for pat, pc := range c.Paths {
+		if !doublestar.ValidatePattern(pat) {
+			return nil, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+		}
+		for _, ig := range pc.Ignore {
+			if m := ig.deprecation(); m != "" {
+				c.Deprecations = append(c.Deprecations, fmt.Sprintf("\"paths\": %s", m))
+			}
+		}
+	}
+	for i, r := range c.RequiredActions {
+		if r.Action == "" {
+			return nil, fmt.Errorf("\"action\" is required in \"required-actions\" item at index %d", i)
+		}
+		if strings.Contains(r.Action, "@") || strings.HasPrefix(r.Action, "./") || strings.HasPrefix(r.Action, selfRepositoryUsesPrefix) || strings.HasPrefix(r.Action, "docker://") || !strings.Contains(r.Action, "/") {
+			return nil, fmt.Errorf("invalid action %q in \"required-actions\": it must be like \"owner/repo\" without \"@version\"; put the version in \"version\"", r.Action)
+		}
+	}
+	if c.Platform != nil {
+		switch *c.Platform {
+		case PlatformGitHub, PlatformForgejo, PlatformGitea:
+		default:
+			return nil, fmt.Errorf("invalid value %q for \"platform\". available values are %q, %q and %q", *c.Platform, PlatformGitHub, PlatformForgejo, PlatformGitea)
+		}
+	}
+	if err := validateRunnerProviders(c.SelfHostedRunner.Providers); err != nil {
+		return nil, err
+	}
+	if c.GeneratedFiles != nil {
+		switch *c.GeneratedFiles {
+		case GeneratedFilesReport, GeneratedFilesSkipPolicy, GeneratedFilesSkip:
+		default:
+			return nil, fmt.Errorf("invalid value %q for \"generated-files\". available values are %q, %q and %q", *c.GeneratedFiles, GeneratedFilesReport, GeneratedFilesSkipPolicy, GeneratedFilesSkip)
+		}
+	}
+	if c.AssumeDefaultPermissions != nil {
+		switch *c.AssumeDefaultPermissions {
+		case AssumeDefaultPermissionsRestricted, AssumeDefaultPermissionsPermissive:
+		default:
+			return nil, fmt.Errorf("invalid value %q for \"assume-default-permissions\". available values are %q and %q", *c.AssumeDefaultPermissions, AssumeDefaultPermissionsRestricted, AssumeDefaultPermissionsPermissive)
+		}
+	}
+	if err := c.OnlineOptions.validate(); err != nil {
+		return nil, fmt.Errorf("%w in \"online-options\"", err)
+	}
+	if err := c.Shellcheck.validate(); err != nil {
+		return nil, err
+	}
+	if err := c.normalizeRules(); err != nil {
+		return nil, err
+	}
+	if err := c.applyLegacy(&legacy); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// ReadConfigFile reads jactionlint config file (jactionlint.yaml) from the given file path. The
+// files listed in "extends" are read too and merged into the returned config.
+func ReadConfigFile(path string) (*Config, error) {
+	return readConfigFile(path, nil)
+}
+
+// maxExtendsDepth limits how deep "extends" chains can be.
+const maxExtendsDepth = 10
+
+// extendsError is the error of a file listed in "extends" which could not be loaded. It wraps the cause, so that
+// errors.Is(err, os.ErrNotExist) is true when the file does not exist. Use isExtendsError to tell that apart
+// from the config file itself not existing.
+type extendsError struct {
+	path   string // the config file which lists the file
+	target string // the entry of "extends" as written
+	err    error
+}
+
+func (e *extendsError) Error() string {
+	return fmt.Sprintf("could not load %q listed in \"extends\" of config file %q: %s", e.target, e.path, e.err)
+}
+
+func (e *extendsError) Unwrap() error { return e.err }
+
+// isExtendsError reports whether err comes from a file listed in "extends", at any depth of the chain.
+func isExtendsError(err error) bool {
+	var ee *extendsError
+	return errors.As(err, &ee)
+}
+
+func readConfigFile(path string, stack []string) (*Config, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+	}
+	c, err := parseConfig(b)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	c.Path = path
+	for i := range c.Ignores {
+		c.Ignores[i].Path = path
+	}
+	for i, d := range c.Deprecations {
+		c.Deprecations[i] = fmt.Sprintf("config file %q: %s", path, d)
+	}
+
+	if len(c.Extends) == 0 {
+		return c, nil
+	}
+
+	abs := absPath(path)
+	if slices.Contains(stack, abs) {
+		return nil, fmt.Errorf("could not parse config file %q: \"extends\" makes a cycle: %s", path, strings.Join(append(slices.Clone(stack), abs), " -> "))
+	}
+	if len(stack) >= maxExtendsDepth {
+		return nil, fmt.Errorf("could not parse config file %q: \"extends\" is nested more than %d levels", path, maxExtendsDepth)
+	}
+	stack = append(slices.Clone(stack), abs)
+
+	merged := &Config{}
+	for _, e := range c.Extends {
+		p := e
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(filepath.Dir(path), p)
+		}
+		base, err := readConfigFile(p, stack)
+		if err != nil {
+			return nil, &extendsError{path: path, target: e, err: err}
+		}
+		merged.merge(base)
+	}
+	merged.merge(c)
+	merged.Path = path
+	merged.Extends = c.Extends
+	return merged, nil
+}
+
+// merge applies the explicitly written settings of over on top of c. Mappings (rules, paths) are
+// merged by key and everything else is replaced.
+func (c *Config) merge(over *Config) {
+	if c.present == nil {
+		c.present = map[string]bool{}
+	}
+	if over.present["profile"] {
+		c.Profile = over.Profile
+	}
+	if len(over.Rules) > 0 && c.Rules == nil {
+		c.Rules = map[string]RuleConfig{}
+	}
+	for id, rc := range over.Rules {
+		c.Rules[id] = rc
+	}
+	if over.present["online"] {
+		c.Online = over.Online
+	}
+	if over.present["baseline"] {
+		c.Baseline = over.Baseline
+	}
+	if over.present["online-options"] {
+		c.OnlineOptions = c.OnlineOptions.overlay(over.OnlineOptions)
+	}
+	if over.present["self-hosted-runner.labels"] {
+		c.SelfHostedRunner.Labels = over.SelfHostedRunner.Labels
+	}
+	if over.present["self-hosted-runner.strict-labels"] {
+		c.SelfHostedRunner.StrictLabels = over.SelfHostedRunner.StrictLabels
+	}
+	if over.present["self-hosted-runner.providers"] {
+		c.SelfHostedRunner.Providers = over.SelfHostedRunner.Providers
+	}
+	if over.present["config-variables"] {
+		c.ConfigVariables = over.ConfigVariables
+	}
+	if over.present["config-secrets"] {
+		c.ConfigSecrets = over.ConfigSecrets
+	}
+	if len(over.Paths) > 0 && c.Paths == nil {
+		c.Paths = map[string]PathConfig{}
+	}
+	for p, pc := range over.Paths {
+		c.Paths[p] = pc
+	}
+	c.Ignores = append(c.Ignores, over.Ignores...)
+	if over.present["required-actions"] {
+		c.RequiredActions = over.RequiredActions
+	}
+	if over.present["platform"] {
+		c.Platform = over.Platform
+	}
+	if over.present["generated-files"] {
+		c.GeneratedFiles = over.GeneratedFiles
+	}
+	if over.present["assume-default-permissions"] {
+		c.AssumeDefaultPermissions = over.AssumeDefaultPermissions
+	}
+	if over.present["fix.rules"] {
+		c.Fix.Rules = over.Fix.Rules
+	}
+	if over.present["shellcheck.rcfile"] {
+		c.Shellcheck.RCFile = over.Shellcheck.RCFile
+	}
+	if over.present["shellcheck.args"] {
+		c.Shellcheck.Args = over.Shellcheck.Args
+	}
+	if over.present["shellcheck.enable"] {
+		c.Shellcheck.Enable = over.Shellcheck.Enable
+	}
+	c.Deprecations = append(c.Deprecations, over.Deprecations...)
+	c.Notices = append(c.Notices, over.Notices...)
+	c.profileNotices = append(c.profileNotices, over.profileNotices...)
+	for k := range over.present {
+		c.present[k] = true
+	}
+}
+
+// configFileNames are the names of config files in order of precedence. The "actionlint" names
+// are the ones used by the original actionlint and are still accepted.
+var configFileNames = []string{"jactionlint.yaml", "jactionlint.yml", "actionlint.yaml", "actionlint.yml"}
+
+// globalConfigDirs are the directory names under $XDG_CONFIG_HOME in order of precedence together with
+// the config file names looked up in each of them.
+var globalConfigDirs = []struct {
+	dir   string
+	files []string
+}{
+	{"jactionlint", []string{"jactionlint.yaml", "jactionlint.yml"}},
+	{"actionlint", []string{"actionlint.yaml", "actionlint.yml"}},
+}
+
+// loadRepoConfig reads config file from the repository's .github/jactionlint.yaml or
+// .github/jactionlint.yml. The names used by actionlint (.github/actionlint.yaml and
+// .github/actionlint.yml) are also accepted.
+func loadRepoConfig(root string) (*Config, error) {
+	for _, f := range configFileNames {
+		p := filepath.Join(root, ".github", f)
+		c, err := ReadConfigFile(p)
+		switch {
+		// A file listed in "extends" which does not exist is an error of this config file, which is there.
+		case errors.Is(err, os.ErrNotExist) && !isExtendsError(err):
+			continue
+		case err != nil:
+			// The error of ReadConfigFile already names the file.
+			return nil, err
+		default:
+			c.noteActionlintFile(f, filepath.ToSlash(filepath.Join(".github", f)))
+			return c, nil
+		}
+	}
+	return nil, nil
+}
+
+// noteActionlintFile adds the notice that a config file with a name of actionlint was read, when it does not
+// choose a profile. Such a file keeps working, but the profile it gets is the default one, which is
+// stricter than actionlint is. The notice says how to get the checks of actionlint only.
+func (c *Config) noteActionlintFile(name, shown string) {
+	if !strings.HasPrefix(name, "actionlint.") || c.present["profile"] {
+		return
+	}
+	c.profileNotices = append(c.profileNotices, fmt.Sprintf("config file %q was read as a jactionlint config. it sets no \"profile\", so the default profile applies, which has more rules than actionlint. add \"profile: correctness\" to the file or run with --profile correctness for the checks of actionlint. see https://jactionlint.jdx.dev/actionlint", shown))
+}
+
+// loadGlobalConfig reads the user-global config file from
+// $XDG_CONFIG_HOME/jactionlint/jactionlint.yaml (or jactionlint.yml), falling back
+// to $HOME/.config/jactionlint/ when $XDG_CONFIG_HOME is unset. The location used by actionlint
+// ($XDG_CONFIG_HOME/actionlint/actionlint.yaml) is also accepted. It returns the loaded config and
+// its file path, or (nil, "", nil) when no config file exists.
+func loadGlobalConfig() (*Config, string, error) {
+	// The XDG Base Directory spec says relative paths in $XDG_CONFIG_HOME are invalid and must be
+	// ignored. Otherwise a config file in an arbitrary working directory could be picked up.
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" || !filepath.IsAbs(dir) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, "", nil
+		}
+		dir = filepath.Join(home, ".config")
+	}
+	for _, d := range globalConfigDirs {
+		for _, f := range d.files {
+			p := filepath.Join(dir, d.dir, f)
+			c, err := ReadConfigFile(p)
+			switch {
+			// A file listed in "extends" which does not exist is an error of this config file, which is there.
+			case (errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTDIR)) && !isExtendsError(err):
+				continue
+			case err != nil:
+				// The error of ReadConfigFile already names the file.
+				return nil, "", fmt.Errorf("global config file: %w", err)
+			default:
+				c.noteActionlintFile(f, p)
+				return c, p, nil
+			}
+		}
+	}
+	return nil, "", nil
+}
+
+func writeDefaultConfigFile(path string) error {
+	b := []byte(`# yaml-language-server: $schema=` + ConfigSchemaURL + `
+# Rules are enabled by profile, and each profile includes the one before it.
+# "correctness" is what actionlint checks plus the bug detectors of jactionlint.
+# "default" adds the security posture and policy rules worth failing a build on.
+# "pedantic" adds the noisy and opinionated rules. The --profile flag overrides
+# this. See https://jactionlint.jdx.dev/rules for all rule IDs.
+#profile: default
+
+# Turn on the checks which query the GitHub API (impostor commits, known
+# vulnerable actions, archived repositories, ...). Same as the --online flag.
+# See https://jactionlint.jdx.dev/usage#online-checks
+#online: false
+
+# Set the level of a rule by its ID: "error" (fails the run), "warn", "info" or
+# "off". A rule with options takes a mapping.
+rules:
+#  unpinned-uses: error
+#  require-shell: off
+#  max-run-lines:
+#    level: warn
+#    max: 80
+
+# Config files to inherit from. Relative paths are resolved from this file. Later
+# files win and this file wins over all of them.
+#extends:
+#  - ../shared/jactionlint.yaml
+
+self-hosted-runner:
+  # Labels of self-hosted runner in array of strings.
+  labels: []
+
+# Configuration variables in array of strings defined in your repository or
+# organization. ` + "`null`" + ` means disabling configuration variables check.
+# Empty array means no configuration variable is allowed.
+config-variables: null
+
+# Secrets in array of strings defined in your repository or organization.
+# ` + "`null`" + ` means disabling secrets check. Empty array means no secret is allowed.
+config-secrets: null
+
+# Configuration for file paths. The keys are glob patterns to match to file
+# paths relative to the repository root. The values are the configurations for
+# the file paths. Note that the path separator is always '/'.
+# The following configurations are available.
+#
+# "ignore" is an array of rule IDs or regular expression patterns. Errors of the
+# rules and errors with matched messages are ignored. This is similar to the
+# "--ignore" command line option.
+paths:
+#  .github/workflows/**/*.yml:
+#    ignore: [unpinned-uses, 'some message']
+
+# Durable ignores. Each item accepts the findings of rule(s) "rule" in the places
+# matched by "file" (glob), "job" (ID), "step" (id or name) and "uses" (a pattern
+# like "actions/checkout", "actions/*" or "/regex/"). At least one of them is
+# required. They are matched by the structure of the workflow, not by line, so a
+# tool rewriting a "uses:" line (Renovate, Dependabot) does not drop them.
+# "reason" is for readers. After the day "expires" (YYYY-MM-DD) the entry stops
+# ignoring and is reported by the expired-ignore rule.
+#ignores:
+#  - rule: unpinned-uses
+#    uses: actions/checkout
+#    file: .github/workflows/release.yaml
+#    reason: pinned by an organization ruleset
+#    expires: "2027-06-30"
+
+# Controls what permissions are assumed for a caller workflow that declares no
+# "permissions:" block at all when checking reusable workflow calls. Unset, only
+# "id-token", which no default token has, is reported. Set to "restricted" to
+# assume GitHub's restricted default token. Set to "permissive" to assume write
+# on every scope except "id-token" (which always requires an explicit opt-in).
+#assume-default-permissions: restricted
+
+# What to do with a file whose first comment says that a tool wrote it ("DO NOT
+# EDIT", "automatically generated by gh-aw"). The author fixes the generator,
+# not the file. "skip-policy" (the default) does not report the rules of the
+# policy and style groups there, "report" treats the file like any other, and
+# "skip" reports nothing.
+#generated-files: skip-policy
+`)
+	if err := os.WriteFile(path, b, 0644); err != nil {
+		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)
+	}
+	return nil
+}

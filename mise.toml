@@ -1,0 +1,154 @@
+[tools]
+# Pinned to 1.27.1 on purpose: staticcheck (0.8.1 and current master) cannot read the export data of go1.27.2
+# ("export data version 5 is greater than maximum supported version 4"). It runs on this Go with
+# GOTOOLCHAIN=local, while go.mod's `toolchain go1.27.2` supplies the fixed standard library to builds,
+# tests and govulncheck. Unpin once staticcheck supports the new export data.
+go = "1.27.1"
+node = "lts"
+hk = "latest"
+pkl = "latest"
+shellcheck = "latest"
+uv = "latest"
+"pipx:pyflakes" = "latest"
+"go:honnef.co/go/tools/cmd/staticcheck" = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+
+[tasks.build]
+description = "Build the jactionlint executable without cgo"
+env = { CGO_ENABLED = "0" }
+run = "go build ./cmd/jactionlint"
+
+[tasks.generate]
+description = "Regenerate popular_actions.go, all_webhooks.go, availability.go and event_payloads.go (fetches data from GitHub) and docs/rules.md"
+run = ["go generate", "go run ./scripts/generate-rules-doc"]
+
+[tasks."schema-pin"]
+description = "Pin the latest actions/runner schemas that TestSchemaConformance compares the parser with. Usage: mise run schema-pin [commit]"
+run = "scripts/update-schema-pin.bash {{arg(name=\"commit\", default=\"\")}}"
+
+[tasks.rules-doc]
+description = "Regenerate docs/rules.md from the rule registry (run after adding or changing a rule)"
+run = "go run ./scripts/generate-rules-doc"
+
+[tasks."rules-doc:check"]
+description = "Fail when docs/rules.md is outdated"
+run = "go run ./scripts/generate-rules-doc -check"
+
+[tasks.schema]
+description = "Regenerate schema/jactionlint-config.json and schema/jactionlint-output.json from the rule registry (run after adding or changing a rule, an option or a config key)"
+run = "go run ./scripts/generate-config-schema"
+
+[tasks."schema:check"]
+description = "Fail when the JSON Schemas in schema/ are outdated"
+run = "go run ./scripts/generate-config-schema -check"
+
+[tasks."rule-ids"]
+description = "Record newly registered rule IDs in testdata/rule_ids.d/<name>.txt. Usage: mise run rule-ids <name>"
+run = "go test -run TestRuleIDsAreStable -update-rule-ids={{arg(name=\"name\")}} ."
+
+[tasks.test]
+description = "Run all tests"
+run = "go test -race ./..."
+# -race needs cgo, which is hard to set up on Windows
+run_windows = "go test ./..."
+
+[tasks.cov]
+description = "Generate coverage.html and print the coverage per function"
+run = [
+  "go test -race -coverprofile=coverage.out -covermode=atomic ./...",
+  "go tool cover -html=coverage.out -o coverage.html",
+  "go tool cover -func=coverage.out",
+]
+run_windows = [
+  "go test -coverprofile=coverage.out -covermode=atomic ./...",
+  "go tool cover -html=coverage.out -o coverage.html",
+  "go tool cover -func=coverage.out",
+]
+
+[tasks.bench]
+description = "Run benchmarks"
+run = "go test -bench Lint -benchmem"
+
+[tasks."lint:wasm"]
+description = "Run staticcheck on the playground wasm entry point (GOOS=js)"
+# GOTOOLCHAIN=local: staticcheck cannot read the export data of the go.mod toolchain (see hk.pkl)
+env = { GOOS = "js", GOARCH = "wasm", GOTOOLCHAIN = "local" }
+run = "staticcheck ./playground"
+
+[tasks.lint]
+description = "Run all checks (what CI runs): gofmt, vet, staticcheck, govulncheck, shellcheck, docs and workflow checks"
+run = "hk check --all"
+
+[tasks.lint-fix]
+description = "Run all checks and fix what can be fixed"
+run = "hk fix --all"
+
+[tasks.fuzz]
+description = "Run go-fuzz. Usage: mise run fuzz [FuzzParse]"
+run = [
+  "go run github.com/dvyukov/go-fuzz/go-fuzz-build@latest ./fuzz",
+  "go run github.com/dvyukov/go-fuzz/go-fuzz@latest -bin ./jactionlint_fuzz-fuzz.zip -func {{arg(name=\"func\", default=\"FuzzParse\")}}",
+]
+
+[tasks.man]
+description = "Generate the man page man/jactionlint.1 with ronn"
+tools = { ruby = "3.3" }
+run = "bash ./scripts/build-man.bash"
+
+[tasks.matcher]
+description = "Generate .github/jactionlint-matcher.json"
+tools = { node = "lts" }
+run = "node ./scripts/generate-jactionlint-matcher/main.mjs .github/jactionlint-matcher.json"
+
+[tasks."matcher:fixtures"]
+description = "Update the test data of generate-jactionlint-matcher after the default error format changes"
+depends = ["build"]
+run = [
+  "./jactionlint --color ./testdata/err/one_error.yaml > ./scripts/generate-jactionlint-matcher/test/escape.txt || true",
+  "./jactionlint --no-color ./testdata/err/one_error.yaml > ./scripts/generate-jactionlint-matcher/test/no_escape.txt || true",
+  "./jactionlint --format '{% raw %}{{json .}}{% endraw %}' ./testdata/err/one_error.yaml > ./scripts/generate-jactionlint-matcher/test/want.json || true",
+]
+
+[tasks.zizmor-diff]
+description = "Compare jactionlint with zizmor 1.30.1 over the repositories in scripts/zizmor-diff/corpus.txt (see scripts/zizmor-diff/README.md)"
+depends = ["build"]
+run = "go run ./scripts/zizmor-diff --jactionlint ./jactionlint --jactionlint-config scripts/zizmor-diff/pedantic.yaml"
+
+[tasks.fix-corpus]
+description = "Apply all safe fixes to a copy of the corpus and check validity, idempotence and that no finding count goes up (see scripts/fix-corpus/README.md)"
+depends = ["build"]
+run = "go run ./scripts/fix-corpus -jactionlint ./jactionlint"
+
+[tasks.clean]
+description = "Remove build outputs"
+run = [
+  "rm -f ./jactionlint ./jactionlint.exe ./coverage.out ./coverage.html ./jactionlint_fuzz-fuzz.zip ./man/jactionlint.1 ./man/jactionlint.1.html ./jactionlint-workflow-ast",
+  "rm -rf ./corpus ./crashers ./docs/public/playground ./docs/.vitepress/dist ./docs/.vitepress/cache",
+]
+
+[tasks."docs:wasm"]
+description = "Build the playground WebAssembly (docs/public/playground/main.wasm and wasm_exec.js)"
+run = "bash ./scripts/build-wasm.bash"
+
+[tasks."docs:dev"]
+description = "Run the documentation site (VitePress) with live reload"
+depends = ["docs:wasm"]
+dir = "docs"
+run = "npm install && exec npm run docs:dev"
+
+[tasks."docs:build"]
+description = "Build the documentation site (VitePress) into docs/.vitepress/dist; fails on dead links, lost anchors and dead #fragments"
+depends = ["docs:wasm"]
+dir = "docs"
+run = "npm ci && npm run docs:build && npm run verify"
+
+[tasks."docs:preview"]
+description = "Serve the built documentation site"
+dir = "docs"
+run = "npm run docs:preview"
+
+[tasks."docs:test"]
+description = "Test the playground: permalink codec and the real wasm against the links in docs/checks.md"
+depends = ["docs:wasm"]
+dir = "docs"
+run = "npm ci && npm test"

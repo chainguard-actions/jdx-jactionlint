@@ -1,0 +1,558 @@
+package jactionlint
+
+import (
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestRuleRunnerLabelCheckLabels(t *testing.T) {
+	testCases := []struct {
+		what   string
+		labels []string
+		matrix []string
+		known  []string
+		errs   []string
+	}{
+		// Normal cases
+		{
+			what:   "simple GH-hosted Linux runner label",
+			labels: []string{"ubuntu-24.04"},
+		},
+		{
+			what:   "simple GH-hosted Windows runner label",
+			labels: []string{"windows-latest"},
+		},
+		{
+			what:   "simple GH-hosted Windows 11 VS 2026 Arm runner label",
+			labels: []string{"windows-11-vs2026-arm"},
+		},
+		{
+			what:   "simple GH-hosted macOS runner label",
+			labels: []string{"macos-14"},
+		},
+		{
+			what:   "simple GH-hosted runner label in upper case",
+			labels: []string{"macOS-14"},
+		},
+		{
+			what:   "self-hosted Linux runner",
+			labels: []string{"self-hosted", "linux"},
+		},
+		{
+			what:   "self-hosted all Linux runner labels",
+			labels: []string{"self-hosted", "linux", "ubuntu-24.04", "ubuntu-latest"},
+		},
+		{
+			what:   "self-hosted all macOS runner labels",
+			labels: []string{"self-hosted", "macOS", "macOS-latest", "macOS-26"},
+		},
+		{
+			what:   "self-hosted all Windows runner labels",
+			labels: []string{"self-hosted", "windows", "windows-latest", "windows-2025"},
+		},
+		{
+			what:   "self-hosted Linux runner in upper case",
+			labels: []string{"SELF-HOSTED", "LINUX"},
+		},
+		{
+			what:   "self-hosted macOS runner",
+			labels: []string{"self-hosted", "macos", "arm64"},
+		},
+		{
+			what:   "self-hosted runner with GH-hosted runner label",
+			labels: []string{"self-hosted", "ubuntu-24.04"},
+		},
+		{
+			what:   "larger Ubuntu runner",
+			labels: []string{"ubuntu-latest-16-cores"},
+		},
+		{
+			what:   "larger Ubuntu runner with other labels",
+			labels: []string{"ubuntu-latest", "ubuntu-latest-16-cores"},
+		},
+		{
+			what:   "larger Windows runner",
+			labels: []string{"windows-latest-8-cores"},
+		},
+		{
+			what:   "multiple labels for GH-hosted Linux runner",
+			labels: []string{"ubuntu-latest", "ubuntu-24.04"},
+		},
+		{
+			what:   "multiple labels for GH-hosted Windows runner",
+			labels: []string{"windows-latest", "windows-2025"},
+		},
+		{
+			what:   "windows-latest and windows-2025-vs2026 are the same image",
+			labels: []string{"windows-latest", "windows-2025-vs2026"},
+		},
+		{
+			what:   "windows-2025 and windows-2025-vs2026 are the same image",
+			labels: []string{"windows-2025", "windows-2025-vs2026"},
+		},
+		{
+			what:   "multiple labels for GH-hosted macOS runner",
+			labels: []string{"macos-latest", "macos-26"},
+		},
+		{
+			what:   "macos-latest-large is the Intel image of macos-26",
+			labels: []string{"macos-latest-large", "macos-26-large"},
+		},
+		{
+			what:   "macos-latest-xlarge is the xlarge image of macos-26",
+			labels: []string{"macos-latest-xlarge", "macos-26-xlarge"},
+		},
+		{
+			what:   "ubuntu-latest moves to 26.04 in a rollout, so both images are accepted next to it",
+			labels: []string{"ubuntu-latest", "ubuntu-26.04"},
+		},
+		{
+			what:   "user-defined labels",
+			labels: []string{"self-hosted", "foo", "bar", "linux"},
+			known:  []string{"foo", "bar"},
+		},
+		{
+			what:   "user-defined labels with patterns",
+			labels: []string{"self-hosted", "INSTANCE_TYPE=m6a.large", "some-base-prefix:size=large&cpu=8"},
+			known:  []string{"INSTANCE_TYPE=*", "some-base-prefix:size=*&cpu=?"},
+		},
+		{
+			what:   "some character is escaped in user-defined label patterns",
+			labels: []string{`linux-[arch]`},
+			known:  []string{`*-\[*]`},
+		},
+		{
+			what:   "matrix",
+			labels: []string{"${{matrix.os}}"},
+			matrix: []string{"ubuntu-latest", "windows-latest"},
+		},
+		{
+			what:   "matrix at second label",
+			labels: []string{"self-hosted", "${{matrix.os}}"},
+			matrix: []string{"linux", "windows"},
+		},
+		{
+			what:   "matrix at first label",
+			labels: []string{"${{matrix.os}}", "ubuntu-24.04"},
+			matrix: []string{"ubuntu-latest"},
+		},
+		{
+			what:   "self-hosted is one value of the matrix and the other value is a job of its own",
+			labels: []string{"${{matrix.os}}"},
+			matrix: []string{"self-hosted", "ubntu-latest"},
+			errs:   []string{`"ubntu-latest" is unknown`},
+		},
+		{
+			what:   "user-defined label with matrix",
+			labels: []string{"self-hosted", "${{matrix.os}}"},
+			matrix: []string{"foo", "bar"},
+			known:  []string{"foo", "bar"},
+		},
+		{
+			what:   "check label made of a prefix and a matrix value",
+			labels: []string{"foo-${{matrix.os}}"},
+			matrix: []string{"ubuntu-latest"},
+			errs:   []string{`label "foo-ubuntu-latest" is unknown`},
+		},
+		{
+			what:   "check label made of a matrix value and a suffix",
+			labels: []string{"${{matrix.os}}-bar"},
+			matrix: []string{"ubuntu-latest"},
+			errs:   []string{`label "ubuntu-latest-bar" is unknown`},
+		},
+		{
+			what:   "cannot check label: not a matrix",
+			labels: []string{"${{fromJSON(env.FOO).os}}"},
+			matrix: []string{"ubuntu-latest"},
+		},
+		{
+			what:   "cannot check label: not a matrix 2",
+			labels: []string{"${{env.os}}"},
+			matrix: []string{"ubuntu-latest"},
+		},
+		{
+			what:   "cannot check label: matrix object",
+			labels: []string{"${{matrix}}"},
+			matrix: []string{"ubuntu-latest"},
+		},
+		{
+			what:   "cannot parse expression",
+			labels: []string{"${{}}"},
+			matrix: []string{"ubuntu-latest"},
+		},
+		{
+			what:   "give up checking matrix value containing expression",
+			labels: []string{"${{matrix.os}}"},
+			matrix: []string{"ubuntu-latest", "${{env.OS}}"},
+		},
+		{
+			what:   "use matrix value but no matrix exist",
+			labels: []string{"${{matrix.os}}"},
+		},
+		{
+			what:   "ubuntu-26.04",
+			labels: []string{"ubuntu-26.04"},
+		},
+		{
+			what:   "ubuntu-24.04",
+			labels: []string{"ubuntu-24.04"},
+		},
+		{
+			what:   "ubuntu-22.04",
+			labels: []string{"ubuntu-22.04"},
+		},
+		// TODO: Add tests for 'include:'
+		// TODO: Check matrix with 'include:'
+
+		// Error cases
+		{
+			what:   "undefined label",
+			labels: []string{"linux-latest"},
+			errs:   []string{`"linux-latest" is unknown`},
+		},
+		{
+			what:   "custom label next to self-hosted is the label of the runner of its owner",
+			labels: []string{"self-hosted", "foo"},
+		},
+		{
+			what:   "custom label without self-hosted is unknown",
+			labels: []string{"ubuntu-latest", "foo"},
+			errs:   []string{`"foo" is unknown`},
+		},
+		{
+			what:   "larger runner of a known label",
+			labels: []string{"ubuntu-24.04-xl"},
+		},
+		{
+			what:   "larger runner with a size in cores",
+			labels: []string{"ubuntu-latest-16-cores"},
+		},
+		{
+			what:   "larger runner of an unknown base",
+			labels: []string{"ubuntu-99.04-xl"},
+			errs:   []string{`"ubuntu-99.04-xl" is unknown`},
+		},
+		{
+			what:   "GH-hosted runner labels conflict",
+			labels: []string{"ubuntu-latest", "windows-latest"},
+			errs:   []string{`label "windows-latest" conflicts with label "ubuntu-latest"`},
+		},
+		{
+			what:   "self-hosted runner labels conflict",
+			labels: []string{"self-hosted", "windows", "linux"},
+			errs:   []string{`label "linux" conflicts with label "windows"`},
+		},
+		{
+			what:   "self-hosted runner labels conflict with GH-hosted runner label",
+			labels: []string{"self-hosted", "windows", "macOS-latest"},
+			errs:   []string{`label "macOS-latest" conflicts with label "windows"`},
+		},
+		{
+			what:   "GH-hosted labels multiple conflicts",
+			labels: []string{"ubuntu-latest", "windows-latest", "macos-latest"},
+			errs: []string{
+				`label "windows-latest" conflicts with label "ubuntu-latest"`,
+				`label "macos-latest" conflicts with label "ubuntu-latest"`,
+			},
+		},
+		{
+			what:   "GH-hosted labels conflict mixed with self-hosted runner labels",
+			labels: []string{"self-hosted", "ubuntu-latest", "x64", "windows-latest", "foo"},
+			known:  []string{"foo"},
+			errs:   []string{`label "windows-latest" conflicts with label "ubuntu-latest"`},
+		},
+		{
+			what:   "GH-hosted labels conflict ignore case",
+			labels: []string{"macOS-latest", "Windows-latest"},
+			errs:   []string{`label "Windows-latest" conflicts with label "macOS-latest"`},
+		},
+		{
+			what:   "GH-hosted labels conflict with matrix at second label",
+			labels: []string{"ubuntu-latest", "${{matrix.os}}"},
+			matrix: []string{"windows-latest", "macos-latest"},
+			errs: []string{
+				`label "windows-latest" conflicts with label "ubuntu-latest"`,
+				`label "macos-latest" conflicts with label "ubuntu-latest"`,
+			},
+		},
+		{
+			what:   "GH-hosted labels conflict with matrix at first label",
+			labels: []string{"${{matrix.os}}", "ubuntu-latest"},
+			matrix: []string{"windows-latest", "macos-latest"},
+			errs:   []string{`label "ubuntu-latest" conflicts with label`},
+		},
+		{
+			what:   "GH-hosted labels conflicts with multiple matrixes",
+			labels: []string{"${{matrix.os}}", "${{matrix.os}}"},
+			matrix: []string{"windows-latest", "macos-latest"},
+			errs: []string{
+				`label "windows-latest" conflicts with label "macos-latest"`,
+				`label "macos-latest" conflicts with label "windows-latest"`,
+			},
+		},
+		{
+			what:   "windows-latest is not Windows Server 2022 any more",
+			labels: []string{"windows-latest", "windows-2022"},
+			errs:   []string{`label "windows-2022" conflicts with label "windows-latest"`},
+		},
+		{
+			what:   "windows-latest-8-cores is not Windows Server 2022 any more",
+			labels: []string{"windows-latest-8-cores", "windows-2022"},
+			errs:   []string{`label "windows-2022" conflicts with label "windows-latest-8-cores"`},
+		},
+		{
+			what:   "macos-latest is not macOS 15 any more",
+			labels: []string{"macos-latest", "macos-15"},
+			errs:   []string{`label "macos-15" conflicts with label "macos-latest"`},
+		},
+		{
+			what:   "macos-latest-large is not macOS 15 any more",
+			labels: []string{"macos-latest-large", "macos-15-large"},
+			errs:   []string{`label "macos-15-large" conflicts with label "macos-latest-large"`},
+		},
+		{
+			what:   "macos-latest is the arm64 image, macos-latest-large is Intel",
+			labels: []string{"macos-latest", "macos-latest-large"},
+			errs:   []string{`label "macos-latest-large" conflicts with label "macos-latest"`},
+		},
+		{
+			what:   "Linux labels version conflict",
+			labels: []string{"ubuntu-latest", "ubuntu-22.04"},
+			errs:   []string{`label "ubuntu-22.04" conflicts with label "ubuntu-latest"`},
+		},
+		{
+			what:   "macOS labels version conflict",
+			labels: []string{"macos-14", "macos-15"},
+			errs:   []string{`label "macos-15" conflicts with label "macos-14"`},
+		},
+		{
+			what:   "Windows labels version conflict",
+			labels: []string{"windows-2025", "windows-2022"},
+			errs:   []string{`label "windows-2022" conflicts with label "windows-2025"`},
+		},
+		{
+			what:   "Linux labels architecture conflict, 22 and 24",
+			labels: []string{"ubuntu-24.04", "ubuntu-22.04"},
+			errs:   []string{`label "ubuntu-22.04" conflicts with label "ubuntu-24.04"`},
+		},
+		{
+			what:   "Linux labels architecture conflict, 24 and 26",
+			labels: []string{"ubuntu-26.04", "ubuntu-24.04"},
+			errs:   []string{`label "ubuntu-24.04" conflicts with label "ubuntu-26.04"`},
+		},
+		{
+			what:   "macOS labels architecture conflict",
+			labels: []string{"macos-15", "macos-15-intel"},
+			errs:   []string{`label "macos-15-intel" conflicts with label "macos-15"`},
+		},
+		{
+			what:   "macOS 26 labels architecture conflict",
+			labels: []string{"macos-26", "macos-26-intel"},
+			errs:   []string{`label "macos-26-intel" conflicts with label "macos-26"`},
+		},
+		{
+			what:   "Windows labels architecture conflict",
+			labels: []string{"windows-2025", "windows-11-arm"},
+			errs:   []string{`label "windows-11-arm" conflicts with label "windows-2025"`},
+		},
+		{
+			what:   "Windows 11 Arm image labels conflict",
+			labels: []string{"windows-11-arm", "windows-11-vs2026-arm"},
+			errs:   []string{`label "windows-11-vs2026-arm" conflicts with label "windows-11-arm"`},
+		},
+		{
+			what:   "macOS XL and normal labels conflict",
+			labels: []string{"macos-26-xlarge", "macos-26"},
+			errs:   []string{`label "macos-26" conflicts with label "macos-26-xlarge"`},
+		},
+		{
+			what:   "Xcode 27 labels size conflict",
+			labels: []string{"xcode-27", "xcode-27-xlarge"},
+			errs:   []string{`label "xcode-27-xlarge" conflicts with label "xcode-27"`},
+		},
+		{
+			what:   "Xcode 27 conflicts with macOS 26",
+			labels: []string{"xcode-27", "macos-26"},
+			errs:   []string{`label "macos-26" conflicts with label "xcode-27"`},
+		},
+		{
+			what:   "larger runner labels conflict",
+			labels: []string{"ubuntu-latest-16-cores", "windows-latest-8-cores"},
+			errs:   []string{`label "windows-latest-8-cores" conflicts with label "ubuntu-latest-16-cores"`},
+		},
+		{
+			what:   "user-defined labels with invalid glob pattern",
+			labels: []string{"self-hosted", "INSTANCE_TYPE=m6a.large"},
+			known:  []string{"INSTANCE_TYPE=["},
+			errs:   []string{`label pattern "INSTANCE_TYPE=[" is an invalid glob. kindly check list of labels in jactionlint.yaml config file: syntax error in pattern`},
+		},
+		// TODO: Add error tests for 'include:'
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.what, func(t *testing.T) {
+			pos := &Pos{}
+			labels := make([]*String, 0, len(tc.labels))
+			for _, l := range tc.labels {
+				labels = append(labels, &String{Value: l, Pos: pos})
+			}
+			node := &Job{
+				RunsOn: &Runner{
+					Labels: labels,
+				},
+			}
+
+			if tc.matrix != nil {
+				n := &String{Value: "os", Pos: pos}
+				row := make([]RawYAMLValue, 0, len(tc.matrix))
+				for _, m := range tc.matrix {
+					row = append(row, &RawYAMLString{Value: m, pos: pos})
+				}
+				st := &Strategy{
+					Matrix: &Matrix{
+						Rows: map[string]*MatrixRow{
+							"os": {
+								Name:   n,
+								Values: row,
+							},
+						},
+					},
+					Pos: pos,
+				}
+				node.Strategy = st
+			}
+
+			rule := NewRuleRunnerLabel()
+			// macos-14 and ubuntu-22.04 are retired on a known day (runnerLabelRetirements): these cases are about the
+			// labels of a day before that
+			rule.now = func() time.Time { return time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC) }
+			cfg := Config{}
+			cfg.SelfHostedRunner.Labels = tc.known
+			rule.SetConfig(&cfg)
+			if err := rule.VisitJobPre(node); err != nil {
+				t.Fatal(err)
+			}
+
+			errs := rule.Errs()
+			if len(errs) != len(tc.errs) {
+				t.Fatalf("%d error(s) are wanted but got %d error(s) actually: %v", len(tc.errs), len(errs), errs)
+			}
+			for i, want := range tc.errs {
+				have := errs[i].Error()
+				if !strings.Contains(have, want) {
+					t.Fatalf("%q is not contained in error message of errs[%d]: %q", want, i, have)
+				}
+			}
+		})
+	}
+}
+
+func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
+	rule := NewRuleRunnerLabel()
+	if err := rule.VisitJobPre(&Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if errs := rule.Errs(); len(errs) > 0 {
+		t.Fatalf("%d error(s) occurred: %v", len(errs), errs)
+	}
+}
+
+func TestRuleRunnerLabelAllGitHubHostedRunnerLabels(t *testing.T) {
+	all := []string{}
+	all = append(all, allGitHubHostedRunnerLabels...)
+	all = append(all, selfHostedRunnerPresetOSLabels...)
+
+	if len(all) != len(defaultRunnerOSCompats) {
+		t.Errorf("%d elements in allGitHubHostedRunnerLabels but %d elements in githubHostedRunnerCompats", len(all), len(defaultRunnerOSCompats))
+	}
+	for _, l := range all {
+		if l != strings.ToLower(l) {
+			t.Errorf("label %q in allGitHubHostedRunnerLabels is not in lower-case", l)
+		}
+		if _, ok := defaultRunnerOSCompats[l]; !ok {
+			t.Errorf("%q is included in allGitHubHostedRunnerLabels but not included in githubHostedRunnerCompats", l)
+		}
+	}
+}
+
+func TestRuleRunnerLabelStrictLabels(t *testing.T) {
+	tests := []struct {
+		what   string
+		labels []string
+		known  []string
+		errs   []string
+	}{
+		{
+			what:   "listed label only",
+			labels: []string{"my-runner"},
+			known:  []string{"my-runner"},
+		},
+		{
+			what:   "glob in known labels",
+			labels: []string{"gpu-a100"},
+			known:  []string{"gpu-*"},
+		},
+		{
+			what:   "GitHub-hosted label is rejected",
+			labels: []string{"ubuntu-latest"},
+			known:  []string{"my-runner"},
+			errs:   []string{`label "ubuntu-latest" is not allowed`},
+		},
+		{
+			what:   "default self-hosted label is rejected",
+			labels: []string{"self-hosted", "my-runner"},
+			known:  []string{"my-runner"},
+			errs:   []string{`label "self-hosted" is not allowed`},
+		},
+		{
+			what:   "default label is accepted when explicitly listed",
+			labels: []string{"self-hosted", "my-runner"},
+			known:  []string{"self-hosted", "my-runner"},
+		},
+		{
+			what:   "no known labels rejects everything",
+			labels: []string{"ubuntu-latest"},
+			errs:   []string{`label "ubuntu-latest" is not allowed`},
+		},
+		{
+			what:   "conflict is still detected for listed built-in labels",
+			labels: []string{"ubuntu-latest", "windows-latest"},
+			known:  []string{"ubuntu-latest", "windows-latest"},
+			errs:   []string{`label "windows-latest" conflicts with label "ubuntu-latest"`},
+		},
+		{
+			what:   "invalid glob",
+			labels: []string{"x"},
+			known:  []string{"["},
+			errs:   []string{`label pattern "[" is an invalid glob`},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			pos := &Pos{}
+			labels := make([]*String, 0, len(tc.labels))
+			for _, l := range tc.labels {
+				labels = append(labels, &String{Value: l, Pos: pos})
+			}
+			node := &Job{RunsOn: &Runner{Labels: labels}}
+			rule := NewRuleRunnerLabel()
+			cfg := Config{}
+			cfg.SelfHostedRunner.Labels = tc.known
+			cfg.SelfHostedRunner.StrictLabels = true
+			rule.SetConfig(&cfg)
+			if err := rule.VisitJobPre(node); err != nil {
+				t.Fatal(err)
+			}
+			errs := rule.Errs()
+			if len(errs) != len(tc.errs) {
+				t.Fatalf("%d error(s) wanted but got %d: %v", len(tc.errs), len(errs), errs)
+			}
+			for i, want := range tc.errs {
+				if !strings.Contains(errs[i].Error(), want) {
+					t.Fatalf("%q not contained in %q", want, errs[i].Error())
+				}
+			}
+		})
+	}
+}
