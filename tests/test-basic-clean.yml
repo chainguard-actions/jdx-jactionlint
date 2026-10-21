@@ -1,0 +1,55 @@
+name: Test basic clean workflow
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a project with a clean workflow
+        run: |
+          set -e
+          rm -rf lint-clean
+          mkdir -p lint-clean/.github/workflows
+          cd lint-clean
+          git init -q .
+          cat > .github/workflows/ci.yml <<'EOF'
+          name: CI
+          on: push
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo hello
+          EOF
+          cat .github/workflows/ci.yml
+      - id: action
+        uses: .
+        with:
+          working-directory: lint-clean
+          files: .github/workflows/ci.yml
+          profile: correctness
+          min-severity: error
+          online: "false"
+      - name: Assert executable output
+        env:
+          EXE: ${{ steps.action.outputs.executable }}
+          SARIF: ${{ steps.action.outputs.sarif-file }}
+        run: |
+          echo "executable: $EXE"
+          echo "sarif-file: $SARIF"
+          if [ -z "$EXE" ]; then
+            echo "FAIL: executable output is empty"
+            exit 1
+          fi
+          if [ ! -x "$EXE" ]; then
+            echo "FAIL: $EXE is not an executable file"
+            exit 1
+          fi
+          if [ -n "$SARIF" ]; then
+            echo "FAIL: sarif-file should be empty without advanced-security"
+            exit 1
+          fi
+          "$EXE" --version
+          echo "PASS"

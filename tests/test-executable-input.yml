@@ -1,0 +1,63 @@
+name: Test executable input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a project with a clean workflow
+        run: |
+          set -e
+          rm -rf lint-exe
+          mkdir -p lint-exe/.github/workflows
+          cd lint-exe
+          git init -q .
+          cat > .github/workflows/ci.yml <<'EOF'
+          name: CI
+          on: push
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo hello
+          EOF
+      - id: install
+        uses: .
+        with:
+          working-directory: lint-exe
+          files: .github/workflows/ci.yml
+          profile: correctness
+          min-severity: error
+          online: "false"
+      - name: Copy the executable to a custom location
+        env:
+          EXE: ${{ steps.install.outputs.executable }}
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/custom-bin"
+          cp "$EXE" "$RUNNER_TEMP/custom-bin/my-jactionlint"
+          chmod +x "$RUNNER_TEMP/custom-bin/my-jactionlint"
+          echo "CUSTOM_EXE=$RUNNER_TEMP/custom-bin/my-jactionlint" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        with:
+          executable: ${{ env.CUSTOM_EXE }}
+          version: "not-a-version"
+          working-directory: lint-exe
+          files: .github/workflows/ci.yml
+          profile: correctness
+          min-severity: error
+          online: "false"
+      - name: Assert the given executable was used
+        env:
+          ACTUAL: ${{ steps.action.outputs.executable }}
+        run: |
+          echo "actual: $ACTUAL"
+          echo "expected: $CUSTOM_EXE"
+          if [ "$ACTUAL" != "$CUSTOM_EXE" ]; then
+            echo "FAIL: executable output does not match the executable input"
+            exit 1
+          fi
+          echo "PASS"

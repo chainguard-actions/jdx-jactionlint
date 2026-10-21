@@ -1,0 +1,6 @@
+adhoc-packages
+github-env
+superfluous-actions
+unlocked-install
+unpinned-tools
+use-trusted-publishing

@@ -1,0 +1,2440 @@
+# Changelog
+
+## [2.3.0](https://github.com/jdx/jactionlint/compare/v2.2.0...v2.3.0) (2026-10-21)
+
+
+### Features
+
+* **config:** add allow-unused to durable ignores ([#297](https://github.com/jdx/jactionlint/issues/297)) ([69311d3](https://github.com/jdx/jactionlint/commit/69311d3227f97134cc768264676d76af3ec461b4))
+* **upstream:** catch workflow analyzer gaps earlier ([#288](https://github.com/jdx/jactionlint/issues/288)) ([439e97d](https://github.com/jdx/jactionlint/commit/439e97d042466daaa769f73b69c3d6934aa2ee1f))
+
+
+### Bug Fixes
+
+* build with Go 1.27.3 to reject compromised eMudhra certificates ([#301](https://github.com/jdx/jactionlint/issues/301)) ([cca9bb8](https://github.com/jdx/jactionlint/commit/cca9bb8a59472f93ff56dd04a52e2a6cc81f8b80))
+* **workflow-call-permissions:** grant id-token to a silent caller under the permissive default ([#299](https://github.com/jdx/jactionlint/issues/299)) ([493a916](https://github.com/jdx/jactionlint/commit/493a916e4a5ee1b9b77573ec23cc8a9c458be29e))
+
+## [2.2.0](https://github.com/jdx/jactionlint/compare/v2.1.0...v2.2.0) (2026-10-14)
+
+
+### Features
+
+* **action-input-dependencies:** report inputs of well-known actions that need each other ([#207](https://github.com/jdx/jactionlint/issues/207)) ([ef17270](https://github.com/jdx/jactionlint/commit/ef17270142527184ec828642c5892ec59c9cdbb6))
+* **action-release-cooldown:** report an action at a version younger than N days (online, opt-in) ([#235](https://github.com/jdx/jactionlint/issues/235)) ([7dbd838](https://github.com/jdx/jactionlint/commit/7dbd83835bffa7702d7148e14dfec0613e43fdd8))
+* **action:** check the inputs of any remote action against its action.yml with --online ([#231](https://github.com/jdx/jactionlint/issues/231)) ([ac30cbe](https://github.com/jdx/jactionlint/commit/ac30cbec4157a1972e962ff0302afaab8e865974))
+* **actions-lock:** lint GitHub's Actions lock file against the workflows ([#237](https://github.com/jdx/jactionlint/issues/237)) ([c9d8944](https://github.com/jdx/jactionlint/commit/c9d89447a4072ec89dbd78de752691733c66e91d))
+* **argument-injection:** report free text in the program or the options of sed, awk, find and tar ([#221](https://github.com/jdx/jactionlint/issues/221)) ([ecf46dc](https://github.com/jdx/jactionlint/commit/ecf46dc8ff6f377dbebc02f9c02fdd235d4e863e))
+* **aube:** understand aube in the rules that know npm, pnpm, yarn and bun ([#254](https://github.com/jdx/jactionlint/issues/254)) ([f6d9319](https://github.com/jdx/jactionlint/commit/f6d9319ad63f8c63ed6f7c44295e450fa0006b28))
+* **cache-poisoning:** add pnpm/setup, graalvm and composer, and report caches of credential files ([#216](https://github.com/jdx/jactionlint/issues/216)) ([e3c29f0](https://github.com/jdx/jactionlint/commit/e3c29f0d999c881c602622c7aace64d348d52d72))
+* **cache-poisoning:** report more zizmor findings and add a pedantic tier ([#160](https://github.com/jdx/jactionlint/issues/160)) ([c725459](https://github.com/jdx/jactionlint/commit/c7254590882f3039a95a2636f3b7de1cca30c13a))
+* **cli:** add --ruff, --show-doc-urls, --finding-context, platform forgejo and jujutsu roots ([#215](https://github.com/jdx/jactionlint/issues/215)) ([8e31c5c](https://github.com/jdx/jactionlint/commit/8e31c5c81a5bdb67688c30d362ba2e8f950b93e6))
+* **cli:** add shell completions and --explain RULE ([#204](https://github.com/jdx/jactionlint/issues/204)) ([b3b09d3](https://github.com/jdx/jactionlint/commit/b3b09d35e0cd19f8ae20288e6fa2c74cc1620d5a))
+* **cli:** add the options select, no-ignores and list-rules ([#200](https://github.com/jdx/jactionlint/issues/200)) ([dca5092](https://github.com/jdx/jactionlint/commit/dca5092035fa6f6fec9e67205b72d1330a1823fe))
+* **cli:** show only the findings on what changed since a revision (--changed-since) ([#274](https://github.com/jdx/jactionlint/issues/274)) ([ea0ac90](https://github.com/jdx/jactionlint/commit/ea0ac90a863d2c79da28f04dc3d6ed0310e4d28e))
+* **command-injection:** report input that a script runs as code after it moved to env ([#202](https://github.com/jdx/jactionlint/issues/202)) ([ebeeb6f](https://github.com/jdx/jactionlint/commit/ebeeb6f0cda105b886149f38c34f7f174ca083d7))
+* **comment-trigger-authorization:** report comment-triggered jobs that do not check who commented (pedantic) ([#217](https://github.com/jdx/jactionlint/issues/217)) ([60fa75e](https://github.com/jdx/jactionlint/commit/60fa75e01449d89ac2b6082ea65c84c023b422be))
+* **concurrency-deadlock:** report a group that a workflow shares with the workflow it calls ([#210](https://github.com/jdx/jactionlint/issues/210)) ([c41e2ad](https://github.com/jdx/jactionlint/commit/c41e2ad9c7a57ffddd8bfa8cbd9b0f008fb2cd84))
+* **concurrency-limits:** report schedule-only and manual-only workflows (pedantic) ([#266](https://github.com/jdx/jactionlint/issues/266)) ([c1ec820](https://github.com/jdx/jactionlint/commit/c1ec8202a1388f4a2e12a5b95477cda966ce6f41))
+* **config:** JSON Schemas for the config file and for --format json ([#195](https://github.com/jdx/jactionlint/issues/195)) ([5f83de6](https://github.com/jdx/jactionlint/commit/5f83de61e30607308e635660acc6b70d6ff90f5d))
+* **dangerous-triggers:** say what the token and the secrets can do, and make a workflow without privileges pedantic ([#189](https://github.com/jdx/jactionlint/issues/189)) ([97e79e7](https://github.com/jdx/jactionlint/commit/97e79e73a87eab7588c7110f4c0902f1e447ca27))
+* **deprecated-node-runtime:** report a Node.js runtime that GitHub removed in the metadata of an action (pedantic) ([#225](https://github.com/jdx/jactionlint/issues/225)) ([84dd922](https://github.com/jdx/jactionlint/commit/84dd92254579ebf7d9655367ac589f31948552d7))
+* **deprecated-node-runtime:** report popular actions at majors that declare node20 (pedantic) ([#230](https://github.com/jdx/jactionlint/issues/230)) ([8a9fc95](https://github.com/jdx/jactionlint/commit/8a9fc95f2987d00bcbb12a1615cd3d651b535dc7))
+* **deprecated-node-runtime:** report the environment variables that chose the Node.js runtime (pedantic) ([#234](https://github.com/jdx/jactionlint/issues/234)) ([6531d87](https://github.com/jdx/jactionlint/commit/6531d87abdb13799bab9f3c0f2aed9891e79afc4))
+* **environment-file-redirect:** report writes to GITHUB_OUTPUT that lose the data ([#184](https://github.com/jdx/jactionlint/issues/184)) ([79cc5ef](https://github.com/jdx/jactionlint/commit/79cc5ef5ae70a780629a280d5eb602dc6b57778e))
+* **event-name-never-received:** report github.event_name compared with an event the workflow never receives ([#214](https://github.com/jdx/jactionlint/issues/214)) ([b3bfcc4](https://github.com/jdx/jactionlint/commit/b3bfcc4a2d741b5d05563f4f732476ebe43c3676))
+* **external-tools:** say when shellcheck or pyflakes did not run ([#188](https://github.com/jdx/jactionlint/issues/188)) ([f7280e5](https://github.com/jdx/jactionlint/commit/f7280e52cf00f099d06b2cc3569096779a475e5a))
+* **facts:** export the events, permissions, concurrency and calls of a repository as versioned JSON (--export-facts) ([#272](https://github.com/jdx/jactionlint/issues/272)) ([881dde9](https://github.com/jdx/jactionlint/commit/881dde95bd0a7fcdd74b33491f06fbe34dd3975f))
+* **fail-fast-action-inputs:** report actions that pass when nothing was produced ([#196](https://github.com/jdx/jactionlint/issues/196)) ([f856144](https://github.com/jdx/jactionlint/commit/f856144b71a11ea4cdd160ede4292c180407c0bc))
+* **fix:** say why more findings have no fix, add --show-fix-status and the fix prerequisites to --explain ([#269](https://github.com/jdx/jactionlint/issues/269)) ([7aa3187](https://github.com/jdx/jactionlint/commit/7aa31871bf8763e9a88980d7745548bf5c7851be))
+* **gh-without-token:** report the gh command without GH_TOKEN or GITHUB_TOKEN ([#177](https://github.com/jdx/jactionlint/issues/177)) ([1d997da](https://github.com/jdx/jactionlint/commit/1d997da799b1403c157baa938a4a1f5d06e429e6))
+* **github-app:** check two more token actions and cover local composite actions in dependabot-missing-actions-update ([#229](https://github.com/jdx/jactionlint/issues/229)) ([e5b620e](https://github.com/jdx/jactionlint/commit/e5b620e0d2ac748754f7209bd815492eedca1bd7))
+* **github-env:** follow text that a script reads with gh and git ([#218](https://github.com/jdx/jactionlint/issues/218)) ([9d0a4bb](https://github.com/jdx/jactionlint/commit/9d0a4bb6d1cdf58acd72fe4b83bb84502a37cbfc))
+* **github-script-syntax:** check the JavaScript of actions/github-script with node --check ([#242](https://github.com/jdx/jactionlint/issues/242)) ([f106562](https://github.com/jdx/jactionlint/commit/f106562666b031881f24d94c8cd412c45f2460d5))
+* **hardcoded-registry-credentials:** report credentials in plain text in the registries of dependabot.yml ([#265](https://github.com/jdx/jactionlint/issues/265)) ([765521c](https://github.com/jdx/jactionlint/commit/765521cdcae380ec2df26b4777dfff670003ef38))
+* **macos-gnu-flags:** report GNU-only options in run scripts of macOS jobs (pedantic) ([#241](https://github.com/jdx/jactionlint/issues/241)) ([871c07d](https://github.com/jdx/jactionlint/commit/871c07d508597db0af0f39c744d60aa87d99593e))
+* **malformed-expression-delimiters:** report ${ github.ref }, $ {{ x }} and {{ github.sha }} ([#180](https://github.com/jdx/jactionlint/issues/180)) ([e452449](https://github.com/jdx/jactionlint/commit/e452449eef7d440269157419030215b9bf8785bf))
+* **missing-version-comment:** report a hash pin without a version comment and add it with --online --fix ([#232](https://github.com/jdx/jactionlint/issues/232)) ([97767b4](https://github.com/jdx/jactionlint/commit/97767b4a3b761d3bddd71fb83be16c46f4d40a0d))
+* **multiline-plain-run:** report a run folded into one line ([#205](https://github.com/jdx/jactionlint/issues/205)) ([f4e76c4](https://github.com/jdx/jactionlint/commit/f4e76c4c03ae1cf45ed653afe8090b5411f29dd8))
+* **online:** look up the actions of a GitHub Enterprise Server on github.com ([#250](https://github.com/jdx/jactionlint/issues/250)) ([d8a1280](https://github.com/jdx/jactionlint/commit/d8a1280bca89aadbb25833dc5effbdd0d263215a))
+* **online:** report coverage and cache freshness outside SARIF ([#166](https://github.com/jdx/jactionlint/issues/166)) ([5fd779e](https://github.com/jdx/jactionlint/commit/5fd779ec5a61fbf4e116d13f9a3a9ddf1c44a97f))
+* **online:** report the jobs whose environment has no required reviewers ([#247](https://github.com/jdx/jactionlint/issues/247)) ([6c13781](https://github.com/jdx/jactionlint/commit/6c137813c7a9013eb858120baeb7cb7bd8365c62))
+* **output-clobbering:** report input with line breaks written to GITHUB_OUTPUT as a record ([#212](https://github.com/jdx/jactionlint/issues/212)) ([c992eef](https://github.com/jdx/jactionlint/commit/c992eefb9421429405bc2edb48d494eeac0547b5))
+* **permissions:** report a job whose permissions are too narrow for its actions ([#192](https://github.com/jdx/jactionlint/issues/192)) ([07d78b7](https://github.com/jdx/jactionlint/commit/07d78b75d5ee6d75852e2d6c4d8b79fb85cbbd96))
+* **ref-version-mismatch:** fix the version comment (unsafe) and read ratchet comments ([#227](https://github.com/jdx/jactionlint/issues/227)) ([60842f7](https://github.com/jdx/jactionlint/commit/60842f70950b5febfcfa9804dce8c78042466769))
+* **release:** publish wheels to PyPI with go-to-wheel ([#277](https://github.com/jdx/jactionlint/issues/277)) ([0440a3a](https://github.com/jdx/jactionlint/commit/0440a3a78ee76fc58093a171d433748940765f6b))
+* **repojacking:** report an action whose owner name anyone can register ([#248](https://github.com/jdx/jactionlint/issues/248)) ([3b62077](https://github.com/jdx/jactionlint/commit/3b620773996eee5e19baca0b0ceae2f5799fd3ad))
+* **runner-label:** accept the labels of hosted-runner providers ([#199](https://github.com/jdx/jactionlint/issues/199)) ([27e453c](https://github.com/jdx/jactionlint/commit/27e453c6d6e5e56d578dae08ef7c4bfec612cfa6))
+* **runner-label:** check runner labels built from a matrix value and text ([#233](https://github.com/jdx/jactionlint/issues/233)) ([b67bbd4](https://github.com/jdx/jactionlint/commit/b67bbd4de4406a3c8cc317ac50efc07024f3d167))
+* **runner-label:** warn ahead of the retirement of a runner label and name it afterwards ([#182](https://github.com/jdx/jactionlint/issues/182)) ([0c3756b](https://github.com/jdx/jactionlint/commit/0c3756b6a8a188b7282ad92776be45e1cc2a1079))
+* **sarif:** say why a finding with a fix has none in the log ([#164](https://github.com/jdx/jactionlint/issues/164)) ([7a2a509](https://github.com/jdx/jactionlint/commit/7a2a509893ea569ada839ef57f2bc06acda81ff3))
+* **self-hosted-runner:** count the configured labels and runner groups, and say when a pull request reaches the runner ([#194](https://github.com/jdx/jactionlint/issues/194)) ([80c43f8](https://github.com/jdx/jactionlint/commit/80c43f8fc83da4e59612653790d45fa783c23d9a))
+* **shell-syntax:** report syntax errors in run scripts without shellcheck ([#273](https://github.com/jdx/jactionlint/issues/273)) ([31ee66e](https://github.com/jdx/jactionlint/commit/31ee66e2fd73fbf0cda8d1fd6248829ebf8e4579))
+* **shellcheck:** read a shellcheckrc, extra arguments and optional checks from the config ([#191](https://github.com/jdx/jactionlint/issues/191)) ([4d02a46](https://github.com/jdx/jactionlint/commit/4d02a468a5ded0571a229a4b163cda9ef0ac5f48))
+* **superfluous-actions:** resolve runs-on expressions the repository tells ([#271](https://github.com/jdx/jactionlint/issues/271)) ([22a3f8e](https://github.com/jdx/jactionlint/commit/22a3f8ed7d90df4122a0c8cd6cf8f7759254a577))
+* **template-injection:** report more free text of outsiders in the default profile ([#173](https://github.com/jdx/jactionlint/issues/173)) ([08afe4a](https://github.com/jdx/jactionlint/commit/08afe4af4ec04a72ba8350072303c9fa48389797))
+* **timeouts:** report how long jobs really took in their latest runs (--suggest-timeouts) ([#275](https://github.com/jdx/jactionlint/issues/275)) ([033f615](https://github.com/jdx/jactionlint/commit/033f615f82b8b7311c70b3843a29138f15667bd7))
+* **ubuntu-slim:** report what the single-CPU runner cannot run ([#190](https://github.com/jdx/jactionlint/issues/190)) ([51a5e7f](https://github.com/jdx/jactionlint/commit/51a5e7ffbd99f113eacb04be41d4c644d3d89628))
+* **undefined-property:** check the properties of github.event against the webhook payloads ([#249](https://github.com/jdx/jactionlint/issues/249)) ([81a1038](https://github.com/jdx/jactionlint/commit/81a1038a25974c61e3a43f10be5656263a7edc9a))
+* **unlocked-install:** model the lifecycle scripts and the release age of aube (pedantic) ([#255](https://github.com/jdx/jactionlint/issues/255)) ([f5dfab7](https://github.com/jdx/jactionlint/commit/f5dfab788d8177aef6ba7c34a3b13832fb2ad1f2))
+* **unlocked-install:** report installs without a release-age cooldown (pedantic) ([#201](https://github.com/jdx/jactionlint/issues/201)) ([13779f6](https://github.com/jdx/jactionlint/commit/13779f68a76dd558791a78c209e6aedf86a1c068))
+* **unlocked-install:** report npm, yarn and bun installs that run lifecycle scripts (pedantic) ([#187](https://github.com/jdx/jactionlint/issues/187)) ([ee74c67](https://github.com/jdx/jactionlint/commit/ee74c678ea63c058b3f4067dbf5d0922d4c8ddb9))
+* **unmatched-paths-filter:** report paths filters that match no file of the repository (pedantic) ([#238](https://github.com/jdx/jactionlint/issues/238)) ([2baf2cb](https://github.com/jdx/jactionlint/commit/2baf2cb7631582c4d4f183d46c19271d2311802f))
+* **unpinnable-action:** report a hash-pinned action whose own dependencies are not pinned ([#240](https://github.com/jdx/jactionlint/issues/240)) ([3cc0ddb](https://github.com/jdx/jactionlint/commit/3cc0ddbd33ede15020db96c48a81e02ae9c675d9))
+* **unpinned-images:** check docker run images in scripts, add per-image policies and image allow/deny lists ([#211](https://github.com/jdx/jactionlint/issues/211)) ([376b065](https://github.com/jdx/jactionlint/commit/376b0655cda777226bfd38f7d35e90a3c13185e2))
+* **unpinned-images:** pin container images to a digest with --online --fix=unsafe ([#239](https://github.com/jdx/jactionlint/issues/239)) ([2f63474](https://github.com/jdx/jactionlint/commit/2f63474f51efc3b0fddeacd1165dc3654a32496f))
+* **unpinned-uses:** accept a ref which the Actions lock file pins to a commit ([#228](https://github.com/jdx/jactionlint/issues/228)) ([c702b7c](https://github.com/jdx/jactionlint/commit/c702b7cea5fdd95868eb87e2b959e2187cb91e44))
+* **unpinned-uses:** accept the tag of an immutable release under --online ([#251](https://github.com/jdx/jactionlint/issues/251)) ([c112760](https://github.com/jdx/jactionlint/commit/c11276068f424b0ecd44e8853e1871a82cc16fcf))
+* **unpinned-uses:** name the most specific version tag in the comment of --online --fix ([#224](https://github.com/jdx/jactionlint/issues/224)) ([84dd5fc](https://github.com/jdx/jactionlint/commit/84dd5fc12531492bc8aade26aad889a6a9daf946))
+* **unredacted-secrets:** report values cut from a secret and printed by a script (pedantic) ([#222](https://github.com/jdx/jactionlint/issues/222)) ([c45a29f](https://github.com/jdx/jactionlint/commit/c45a29fdd94e1cd4376b9c5b71da34ef1c8662b7))
+* **untrusted-artifact:** know more download actions and report a download of every artifact with the option pedantic ([#219](https://github.com/jdx/jactionlint/issues/219)) ([bc216f9](https://github.com/jdx/jactionlint/commit/bc216f924ee77c171b66cd85abbe8a2ff4893d72))
+* **untrusted-checkout:** count the actions that run the workspace, with the input that makes them do it ([#213](https://github.com/jdx/jactionlint/issues/213)) ([29fea2c](https://github.com/jdx/jactionlint/commit/29fea2cd35391ab73b7e3cd39927ad678371dbee))
+* **untrusted-checkout:** cover issue_comment workflows that build a pull request ([#206](https://github.com/jdx/jactionlint/issues/206)) ([6b73b42](https://github.com/jdx/jactionlint/commit/6b73b42ad07ab9a2176a7867aa54af0427447ccc))
+* **untrusted-checkout:** follow a pull request revision through variables and script files ([#159](https://github.com/jdx/jactionlint/issues/159)) ([78813f4](https://github.com/jdx/jactionlint/commit/78813f4316c78b530473008610f7220208e10af2))
+* **untrusted-checkout:** follow the head of a pull request into local reusable workflows and composite actions ([#208](https://github.com/jdx/jactionlint/issues/208)) ([29843f2](https://github.com/jdx/jactionlint/commit/29843f2e9984c2c6fdf4311e65786d94960a39cd))
+* **untrusted-checkout:** honor the fork pull request protection of actions/checkout ([#203](https://github.com/jdx/jactionlint/issues/203)) ([1acb258](https://github.com/jdx/jactionlint/commit/1acb258cddabf6c5aa54d27640ae47f1c0b53b98))
+* **untrusted-checkout:** report gates that hold at one moment in front of code that can change, and labels that last ([#220](https://github.com/jdx/jactionlint/issues/220)) ([09fc91e](https://github.com/jdx/jactionlint/commit/09fc91e7b18d15cbafed0cef09ea489bf4211f10))
+* **use-trusted-publishing:** report jobs that build, lack an environment or drop attestations (pedantic) ([#209](https://github.com/jdx/jactionlint/issues/209)) ([1c26e5f](https://github.com/jdx/jactionlint/commit/1c26e5fbd89d40a1b380de2dada7afdbb280053b))
+* **workflow-call:** check the calls of reusable workflows of other repositories with --online ([#236](https://github.com/jdx/jactionlint/issues/236)) ([89f2c75](https://github.com/jdx/jactionlint/commit/89f2c757e74b12cdb41268af70964ab1324a7c50))
+* **workflow-secret-scope:** job-level secrets, secrets passed to reusable workflows, and unused workflow_call secrets ([#223](https://github.com/jdx/jactionlint/issues/223)) ([e7a53ef](https://github.com/jdx/jactionlint/commit/e7a53ef0cb0c9412a70763e3e98b0a8df3f9db39))
+
+
+### Bug Fixes
+
+* **action-release-cooldown:** use the clock of the linter so the docs check does not depend on today ([#289](https://github.com/jdx/jactionlint/issues/289)) ([1de90e2](https://github.com/jdx/jactionlint/commit/1de90e29d56af127683140ad9f77c49eee858e54))
+* **action:** check popular actions pinned to a full version or to a commit with a version comment ([#174](https://github.com/jdx/jactionlint/issues/174)) ([d324b7c](https://github.com/jdx/jactionlint/commit/d324b7caab039172c537a296b95c55df45f19bd2))
+* **api:** accept nil LinterOptions, print the rule ID in Error and PrettyPrint, correct API comments ([#283](https://github.com/jdx/jactionlint/issues/283)) ([e2d3304](https://github.com/jdx/jactionlint/commit/e2d3304c2429fa0e3775028a48758bbd0a9cd4f9))
+* **changed-since:** count shared findings once, keep ..foo inside the repository, refuse --export-facts ([#279](https://github.com/jdx/jactionlint/issues/279)) ([341ccb5](https://github.com/jdx/jactionlint/commit/341ccb5532dec79dcb11389f2dd8d59058f019c4))
+* **cli:** align user-facing messages with the documented behavior ([#287](https://github.com/jdx/jactionlint/issues/287)) ([a6c8dd3](https://github.com/jdx/jactionlint/commit/a6c8dd3aef089bcc0a86c84f59f8f186b4e552c6))
+* **config:** a missing file in "extends" of a discovered config file is an error ([#285](https://github.com/jdx/jactionlint/issues/285)) ([1a848ff](https://github.com/jdx/jactionlint/commit/1a848ff3b04fb0022b83c01223c2f3e205037bae))
+* **download-script:** report a missing release, accept amd64, fix the help text ([#282](https://github.com/jdx/jactionlint/issues/282)) ([3165939](https://github.com/jdx/jactionlint/commit/3165939456b00cbeb51bf757a36d3e47be81eab2))
+* **if-always-true:** do not report the newlines at the end of a block scalar ([#226](https://github.com/jdx/jactionlint/issues/226)) ([871eb35](https://github.com/jdx/jactionlint/commit/871eb35af022bcb4d022208f9b6f0e1ffa431094))
+* **ignore:** read own-line ignore directives from real YAML comments only ([#284](https://github.com/jdx/jactionlint/issues/284)) ([3f9e648](https://github.com/jdx/jactionlint/commit/3f9e648602fa7eef03fc30e147796f1fe6e97c46))
+* **missing-timeout:** add accept-step-timeouts for jobs whose steps all set timeout-minutes ([#252](https://github.com/jdx/jactionlint/issues/252)) ([10cfa99](https://github.com/jdx/jactionlint/commit/10cfa991bbded1bc4eb16b56988b23477a426d86))
+* **multiline-plain-run:** rename commandWords so the package builds again ([#256](https://github.com/jdx/jactionlint/issues/256)) ([24d8900](https://github.com/jdx/jactionlint/commit/24d89005d94ca8438cc8cf0cf0c4ee3c095380bc))
+* **parser:** accept a whole mapping or list written as one expression where the schema allows it ([#178](https://github.com/jdx/jactionlint/issues/178)) ([5689451](https://github.com/jdx/jactionlint/commit/5689451c7514b153aeee276c89594387bf439695))
+* **permissions:** report the pedantic persona's permission findings ([#176](https://github.com/jdx/jactionlint/issues/176)) ([016f588](https://github.com/jdx/jactionlint/commit/016f58883caf37eac1fd29d460245f121a769b0e))
+* **runner-label:** follow the images behind the -latest labels ([#171](https://github.com/jdx/jactionlint/issues/171)) ([8e6159e](https://github.com/jdx/jactionlint/commit/8e6159e19fa66e4e4ac2e87bda2eb33acdfccadf))
+* **syntax:** accept keys and values the workflow schema allows but the docs do not list ([#170](https://github.com/jdx/jactionlint/issues/170)) ([66df2e0](https://github.com/jdx/jactionlint/commit/66df2e0088131f867a1e679054514ed8b4892677))
+* **syntax:** report what the runner rejects in schedules, merge_group, self-repository uses and action.yml ([#186](https://github.com/jdx/jactionlint/issues/186)) ([f498457](https://github.com/jdx/jactionlint/commit/f49845716b3f568c1ec3cd50702de16c0f6ac9e7))
+* **untrusted-checkout:** follow pull/N/head fetches, skip merged pull requests, count sed -f, awk -f, tar -P and unzip -: ([#175](https://github.com/jdx/jactionlint/issues/175)) ([5fd975f](https://github.com/jdx/jactionlint/commit/5fd975f8cda6f77f42cd95a19da85b799db500fd))
+
+
+### Performance Improvements
+
+* analyze each run script once and parse the callers of an action once ([#270](https://github.com/jdx/jactionlint/issues/270)) ([ac37b69](https://github.com/jdx/jactionlint/commit/ac37b6988c2ce156945817ab6e4f5e5407e82621))
+* bound concurrent workflow checks to cut peak memory on huge repositories ([#158](https://github.com/jdx/jactionlint/issues/158)) ([bbe49da](https://github.com/jdx/jactionlint/commit/bbe49daec9414ed9304705014b033ec2aa884ea5))
+* **online:** read the advisories of all actions with one request ([#268](https://github.com/jdx/jactionlint/issues/268)) ([a04bcd2](https://github.com/jdx/jactionlint/commit/a04bcd22813a2d1bfc864316bfd41d15c2709f85))
+* share the parsed expressions of a string with the rules that still parsed them again ([#165](https://github.com/jdx/jactionlint/issues/165)) ([9bcdbb0](https://github.com/jdx/jactionlint/commit/9bcdbb0311fd44b8d47ebcdc93a9192c2febcee7))
+
+## [2.1.0](https://github.com/jdx/jactionlint/compare/v2.0.2...v2.1.0) (2026-10-10)
+
+
+### Features
+
+* add JACTIONLINT_ONLINE to turn the online checks on from the environment ([#155](https://github.com/jdx/jactionlint/issues/155)) ([a17b716](https://github.com/jdx/jactionlint/commit/a17b71618b9caf3c2412415cdde8bc946f17088b))
+* add the workflow-secret-scope rule ([#136](https://github.com/jdx/jactionlint/issues/136)) ([2885719](https://github.com/jdx/jactionlint/commit/2885719286122bfbfe1aecec731b6bb77a1dec2d))
+* explain why a finding has no fix ([#135](https://github.com/jdx/jactionlint/issues/135)) ([5a65169](https://github.com/jdx/jactionlint/commit/5a651697ccbf2a484acb2e50f021e3e18c21a108))
+* **parallel-steps:** flag reads of a background step's outputs before its wait ([#132](https://github.com/jdx/jactionlint/issues/132)) ([540e948](https://github.com/jdx/jactionlint/commit/540e94882f0590df1880b6aa707bdffab583e255))
+* **pipeline-without-pipefail:** follow PIPESTATUS into a later check ([#145](https://github.com/jdx/jactionlint/issues/145)) ([40d579e](https://github.com/jdx/jactionlint/commit/40d579edb67985d5d56101fd2aeac7db08a4d4ed))
+* report online check coverage in SARIF ([#140](https://github.com/jdx/jactionlint/issues/140)) ([ba654bb](https://github.com/jdx/jactionlint/commit/ba654bb63b5fec3deb11d8c0195edd12238e9a34))
+* revisit three v2 defaults from [#106](https://github.com/jdx/jactionlint/issues/106) ([#152](https://github.com/jdx/jactionlint/issues/152)) ([aa19b18](https://github.com/jdx/jactionlint/commit/aa19b18727f62815439fd8373ed201e990d2f9bd))
+
+
+### Bug Fixes
+
+* allow runs.env in composite actions ([#123](https://github.com/jdx/jactionlint/issues/123)) ([e0a95fc](https://github.com/jdx/jactionlint/commit/e0a95fc3170292f65b919524a313886c3e86f4d0))
+* **bot-conditions:** suggest advice that matches the caller's actual event ([#141](https://github.com/jdx/jactionlint/issues/141)) ([a8dad0e](https://github.com/jdx/jactionlint/commit/a8dad0ef78c4af72a528d967eda570100f4efe28))
+* **cache-poisoning:** evaluate the caller's input expression for composite actions ([#139](https://github.com/jdx/jactionlint/issues/139)) ([48ba93d](https://github.com/jdx/jactionlint/commit/48ba93ddc6cff1111301024fb7a4f2710456126a))
+* **cache-poisoning:** treat release branch pushes as releases and know more publishers ([#150](https://github.com/jdx/jactionlint/issues/150)) ([981e623](https://github.com/jdx/jactionlint/commit/981e623e222919be9557018993f4e41812a07574))
+* **ci:** fix problem matcher test and run it on PRs ([#134](https://github.com/jdx/jactionlint/issues/134)) ([80b358a](https://github.com/jdx/jactionlint/commit/80b358ae99b12d0e8d6a6b39183ef8005fd30673))
+* **concurrency-limits:** avoid caller group collisions and cancelling release workflows ([#142](https://github.com/jdx/jactionlint/issues/142)) ([3f543aa](https://github.com/jdx/jactionlint/commit/3f543aaf9c86671d1c602ff6f581ffe8da63e83e))
+* **docs:** say that default-minutes and default-days turn on the --fix fix ([#147](https://github.com/jdx/jactionlint/issues/147)) ([1c43358](https://github.com/jdx/jactionlint/commit/1c43358670d85e4fdb1072064914aa0bd4e938ba))
+* **events:** accept field_added/field_removed for issues ([#130](https://github.com/jdx/jactionlint/issues/130)) ([c5ec59a](https://github.com/jdx/jactionlint/commit/c5ec59a9246d6ce3cc9ad17ac3b62a4cd056f9b0))
+* **fix:** refuse risky unquoted template-injection fixes, fix flow-style artipacked ([#154](https://github.com/jdx/jactionlint/issues/154)) ([ac7f40a](https://github.com/jdx/jactionlint/commit/ac7f40a60f311a31529347881236760eb258bb3c))
+* **migrate-ignores:** migrate the root action.yml, report skipped comments, keep version comments ([#146](https://github.com/jdx/jactionlint/issues/146)) ([fec2e75](https://github.com/jdx/jactionlint/commit/fec2e750981d6fc2df902d0ce37b4a7789c5136e))
+* **missing-permissions:** do not require permissions in reusable-only workflows ([#138](https://github.com/jdx/jactionlint/issues/138)) ([387fb67](https://github.com/jdx/jactionlint/commit/387fb677b8bf8f1d9ca2aa9e19f809997a9e297f))
+* **parallel-steps:** allow redundant background: true inside a parallel group ([#131](https://github.com/jdx/jactionlint/issues/131)) ([b1023d8](https://github.com/jdx/jactionlint/commit/b1023d8409c4000a6163d5b0f93afe9733294e8d))
+* **pipeline-without-pipefail:** ignore pipelines in process substitutions ([#143](https://github.com/jdx/jactionlint/issues/143)) ([f8b0184](https://github.com/jdx/jactionlint/commit/f8b0184b5e30e3f808d1b7cb302a56f684c7cd8f))
+* reject the keys GitHub refuses on wait, wait-all, cancel and parallel steps ([#128](https://github.com/jdx/jactionlint/issues/128)) ([85ee9dd](https://github.com/jdx/jactionlint/commit/85ee9dd3ea5f126b7c927b65b79310c7766fc0c0))
+* **rules:** scoped npm registries and same-branch guards (use-trusted-publishing, github-env) ([#151](https://github.com/jdx/jactionlint/issues/151)) ([92b5064](https://github.com/jdx/jactionlint/commit/92b506457c3991d3cea13d815f52386b60ebf466))
+* **untrusted-checkout:** follow a fetched pull request into a script of the repository ([#149](https://github.com/jdx/jactionlint/issues/149)) ([3eed721](https://github.com/jdx/jactionlint/commit/3eed721c2f1db15af1dccd7ba8b1200137b3a185))
+
+
+### Performance Improvements
+
+* parse each expression once and lex without allocating a scanner ([#153](https://github.com/jdx/jactionlint/issues/153)) ([6910e8b](https://github.com/jdx/jactionlint/commit/6910e8bb4f3642cd7272828c342a0541b39c7886))
+
+## [2.0.2](https://github.com/jdx/jactionlint/compare/v2.0.1...v2.0.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **ci:** sign the macOS binaries by certificate hash in the release workflow ([#111](https://github.com/jdx/jactionlint/issues/111)) ([1ac64f6](https://github.com/jdx/jactionlint/commit/1ac64f62b472fa555f769276d0eaac6f9a69b49e))
+
+## [2.0.1](https://github.com/jdx/jactionlint/compare/v2.0.0...v2.0.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **ci:** build the man page with ronn-ng in the release workflow ([#109](https://github.com/jdx/jactionlint/issues/109)) ([b18d845](https://github.com/jdx/jactionlint/commit/b18d845addef349d2648723cef51c8af2d77d2a2))
+
+## [2.0.0](https://github.com/jdx/jactionlint/compare/v1.8.2...v2.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* use POSIX/GNU command line options only ([#85](https://github.com/jdx/jactionlint/issues/85))
+* add the correctness, default and pedantic profiles and consolidate rule IDs ([#79](https://github.com/jdx/jactionlint/issues/79))
+* add stable rule IDs, severities, profiles and native output formats (v2) ([#47](https://github.com/jdx/jactionlint/issues/47))
+
+### Features
+
+* add a GitHub Action that downloads and runs jactionlint (v2) ([#108](https://github.com/jdx/jactionlint/issues/108)) ([b27de1f](https://github.com/jdx/jactionlint/commit/b27de1faa95e4f6722d43985f14e1c145415dc03))
+* add a shared uses parser and keep yaml comments ([#50](https://github.com/jdx/jactionlint/issues/50)) ([da20b77](https://github.com/jdx/jactionlint/commit/da20b7715f9faf24fbe4a8fef63325c04435cb19))
+* add an internal analyzer for run scripts ([#53](https://github.com/jdx/jactionlint/issues/53)) ([be4bf70](https://github.com/jdx/jactionlint/commit/be4bf7060d845228946ea199a90171b65edfb119))
+* add baseline adoption with -baseline-write and -format summary ([#75](https://github.com/jdx/jactionlint/issues/75)) ([66bfa78](https://github.com/jdx/jactionlint/commit/66bfa78a0e86b5ae9de5d75ab91571e7e8d6e04b))
+* add durable config ignores with expiry ([#74](https://github.com/jdx/jactionlint/issues/74)) ([4e72865](https://github.com/jdx/jactionlint/commit/4e72865fb8eeb400ec9f932f5c0a4799e224a029))
+* add fixers for missing-timeout, missing-permissions and unused-ignore ([#59](https://github.com/jdx/jactionlint/issues/59)) ([17e1e45](https://github.com/jdx/jactionlint/commit/17e1e4546186231f2244722883ab24db7baf8684))
+* add stable rule IDs, severities, profiles and native output formats (v2) ([#47](https://github.com/jdx/jactionlint/issues/47)) ([0c06391](https://github.com/jdx/jactionlint/commit/0c06391aed64b22368953f146f0cfe52850e3034))
+* add the concurrency, gate-job, untrusted-checkout and dead-code rules ([#64](https://github.com/jdx/jactionlint/issues/64)) ([6664fa4](https://github.com/jdx/jactionlint/commit/6664fa40bf662a22b054d3d4e19baacfd5c7bf67))
+* add the correctness, default and pedantic profiles and consolidate rule IDs ([#79](https://github.com/jdx/jactionlint/issues/79)) ([e42a7b9](https://github.com/jdx/jactionlint/commit/e42a7b9cba99f1f5f3cd6d8298ab361dbd7ba47c))
+* add the dependabot-cooldown and dependabot-execution rules ([#63](https://github.com/jdx/jactionlint/issues/63)) ([729babe](https://github.com/jdx/jactionlint/commit/729babe82b4bb5293e2c4fe4102812b4e160ecbb))
+* add the excessive-permissions, unpinned-images, artipacked, cache-poisoning and other permission and pinning rules ([#57](https://github.com/jdx/jactionlint/issues/57)) ([00c2c1f](https://github.com/jdx/jactionlint/commit/00c2c1fd0995a2979018976ddbf93f1ea49e5648))
+* add the github-env, adhoc-packages, unpinned-tools, use-trusted-publishing, superfluous-actions and unlocked-install rules ([#62](https://github.com/jdx/jactionlint/issues/62)) ([21c4e0c](https://github.com/jdx/jactionlint/commit/21c4e0c979080582a06c4a6135404c982c835785))
+* add the impostor-commit, known-vulnerable-actions, ref-confusion, stale-action-refs, archived-uses and ref-version-mismatch online rules ([#60](https://github.com/jdx/jactionlint/issues/60)) ([714ba46](https://github.com/jdx/jactionlint/commit/714ba4612a8af92ad41c6873be806cf3c785a82e))
+* add the insecure-commands, unsound-contains, secrets-inherit, dangerous-triggers and other secrets and workflow-structure rules ([#56](https://github.com/jdx/jactionlint/issues/56)) ([be87194](https://github.com/jdx/jactionlint/commit/be87194bc2496114eac92f0d3e40f89a01ae6fa3))
+* add the invisible-characters and unsound-prefix-match rules ([#71](https://github.com/jdx/jactionlint/issues/71)) ([4d6cb5e](https://github.com/jdx/jactionlint/commit/4d6cb5e4e797cf0fecaa331a060366636f50ffd9))
+* add the pipeline-without-pipefail rule ([#65](https://github.com/jdx/jactionlint/issues/65)) ([c373d0e](https://github.com/jdx/jactionlint/commit/c373d0e56f9364f6fdeeeec4eb59835c44ebadc3))
+* add the template-injection tiers, bot-conditions, obfuscation and misfeature rules ([#58](https://github.com/jdx/jactionlint/issues/58)) ([70e11b9](https://github.com/jdx/jactionlint/commit/70e11b93dc8766759dcf46aaf1cf8fa1690175bd))
+* add the unverified-download, insecure-ssh-keyscan, checkout-static-credentials and insecure-url-scheme rules ([#70](https://github.com/jdx/jactionlint/issues/70)) ([eae08cc](https://github.com/jdx/jactionlint/commit/eae08cca92a53fd68a07a95a38cc1019b0ef2cb1))
+* converge -fix, add -fix -rules and -diff, verify every pass ([#76](https://github.com/jdx/jactionlint/issues/76)) ([8944339](https://github.com/jdx/jactionlint/commit/8944339936d3b2de0f28999c1d5fd0853764c28f))
+* extend template-injection to container and AI-agent sinks and add agentic-actions ([#69](https://github.com/jdx/jactionlint/issues/69)) ([6938d15](https://github.com/jdx/jactionlint/commit/6938d15966ffb7bd30e49626b94d5c005a9c7bdc))
+* honor zizmor ignore comments and add -migrate-ignores ([#66](https://github.com/jdx/jactionlint/issues/66)) ([23a3140](https://github.com/jdx/jactionlint/commit/23a314007f12c05a07df0cc4b73cad171597e409))
+* lint composite action.yml files with caller-aware context ([#72](https://github.com/jdx/jactionlint/issues/72)) ([a0f2843](https://github.com/jdx/jactionlint/commit/a0f2843975f4e06e0add178d9d95fb12301fbc3a))
+* lint dependabot.yml and add a visitor for dependabot rules ([#51](https://github.com/jdx/jactionlint/issues/51)) ([2f687b6](https://github.com/jdx/jactionlint/commit/2f687b689a55579f617f75f72b2c91f786c6b8c8))
+* make -online resilient to failed lookups and add token discovery ([#73](https://github.com/jdx/jactionlint/issues/73)) ([507b083](https://github.com/jdx/jactionlint/commit/507b0835f0f235a8b40b63c0b108289bedbb15c6))
+* use POSIX/GNU command line options only ([#85](https://github.com/jdx/jactionlint/issues/85)) ([baac11d](https://github.com/jdx/jactionlint/commit/baac11dc607d70be987b34af98fc47a060c91106))
+
+
+### Bug Fixes
+
+* apply zizmor ignores like zizmor, show rule IDs, lint every action, skip policy rules in generated files ([#91](https://github.com/jdx/jactionlint/issues/91)) ([d644def](https://github.com/jdx/jactionlint/commit/d644def68c18fefdd28535bbc9876498ffe3910c))
+* close the gaps in untrusted-artifact, agentic-actions and five more rules ([#95](https://github.com/jdx/jactionlint/issues/95)) ([fdf32d3](https://github.com/jdx/jactionlint/commit/fdf32d3a4d539019f03c2c0bdf142095f83970eb))
+* cut false positives in the concurrency, gate, permissions and cooldown rules ([#86](https://github.com/jdx/jactionlint/issues/86)) ([ac69a21](https://github.com/jdx/jactionlint/commit/ac69a21ba49eba3f04f087119873d93f4805407e))
+* keep the baseline from hiding new missing inputs and validate the fix options ([#98](https://github.com/jdx/jactionlint/issues/98)) ([896cf35](https://github.com/jdx/jactionlint/commit/896cf35d490b579963e332e76d3d2781a700c593))
+* lint only direct workflow files, guide first runs, and dogfood the default profile ([#84](https://github.com/jdx/jactionlint/issues/84)) ([468ead1](https://github.com/jdx/jactionlint/commit/468ead1aa985f055fa3fe740a56ff9fa74d521e6))
+* make large workflows fast, report exact positions in multi-line scalars and harden against pathological input ([#83](https://github.com/jdx/jactionlint/issues/83)) ([be058ab](https://github.com/jdx/jactionlint/commit/be058abcf4decac771abd4a36deaad01d8b21962))
+* **release:** expand the signing identity in the codesign hook ([#77](https://github.com/jdx/jactionlint/issues/77)) ([885293f](https://github.com/jdx/jactionlint/commit/885293f1ce59a8aa2da57a6e0ede3f8270904728))
+* remove false positives and close coverage gaps found by the bug bash ([#82](https://github.com/jdx/jactionlint/issues/82)) ([7ed5ce1](https://github.com/jdx/jactionlint/commit/7ed5ce144884ee6b7040a9330413356530e3063c))
+* remove the false positives and false negatives of 14 rules found in round 2 ([#89](https://github.com/jdx/jactionlint/issues/89)) ([62c0fc0](https://github.com/jdx/jactionlint/commit/62c0fc06453dff0f5dae448dcf5dc4a34bc04ae3))
+* report positions inside YAML scalars exactly ([#88](https://github.com/jdx/jactionlint/issues/88)) ([7f6d89c](https://github.com/jdx/jactionlint/commit/7f6d89cb991ac419f1c5c07d8dab492fabd25bbb))
+* share the online cache between tokens, honor online false and match config ignores ([#97](https://github.com/jdx/jactionlint/issues/97)) ([2c49f4b](https://github.com/jdx/jactionlint/commit/2c49f4bb507c0f62d4746100da17d06d2934193a))
+* stop --fix from breaking reusable workflows and word lists, and make --diff minimal ([#87](https://github.com/jdx/jactionlint/issues/87)) ([6748c2f](https://github.com/jdx/jactionlint/commit/6748c2f977f8035179f09068c4639919fce0291a))
+* use the exact env name in the template-injection fix and tighten the cache-poisoning gates ([#96](https://github.com/jdx/jactionlint/issues/96)) ([7684ba2](https://github.com/jdx/jactionlint/commit/7684ba2ce582fa354c63dde0d718ccdfd5760815))
+
+## [1.8.2](https://github.com/jdx/jactionlint/compare/v1.8.1...v1.8.2) (2026-10-05)
+
+
+### Bug Fixes
+
+* **release:** skip the crashing ronn HTML step and use the PAT for pushes to main ([36f9ada](https://github.com/jdx/jactionlint/commit/36f9ada9972c3f33c39b950dfcf83909e2bfdaa9))
+
+## [1.8.1](https://github.com/jdx/jactionlint/compare/v1.8.0...v1.8.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **release:** publish releases as drafts until their assets are uploaded ([4b72b9a](https://github.com/jdx/jactionlint/commit/4b72b9a64a6d7c0d3a3b56a71d405fded13d3bc1))
+
+## [1.8.0](https://github.com/jdx/jactionlint/compare/v1.7.12...v1.8.0) (2026-10-05)
+
+
+### Features
+
+* `workflow_dispatch` allows 25 inputs ([38dfd8e](https://github.com/jdx/jactionlint/commit/38dfd8e5cd3bba97e167bfc1bc877354d26bc9d8))
+* add config-secrets option to allow-list secrets ([#16](https://github.com/jdx/jactionlint/issues/16)) ([b00331b](https://github.com/jdx/jactionlint/commit/b00331b45a78c941d069f5c2f8b200e8d331d6be))
+* add inline ignore comments ([#23](https://github.com/jdx/jactionlint/issues/23)) ([e4dee7a](https://github.com/jdx/jactionlint/commit/e4dee7acb155cfa05cf204ab3b44cf4b0d82a467))
+* add opt-in check for local actions used before checkout ([#29](https://github.com/jdx/jactionlint/issues/29)) ([34f436a](https://github.com/jdx/jactionlint/commit/34f436aeb2d4dff1966a7dbf257dcd3cbf5cde14))
+* add opt-in check for workflow_run workflow names ([#30](https://github.com/jdx/jactionlint/issues/30)) ([a9d60af](https://github.com/jdx/jactionlint/commit/a9d60afc93dd53fb9c33d94085dff12278253040))
+* add opt-in require-expression-wrapping and check-falsy-ternary ([#25](https://github.com/jdx/jactionlint/issues/25)) ([075f8b8](https://github.com/jdx/jactionlint/commit/075f8b8f760c77c03cc23de2dc1868c30e340867))
+* add opt-in require-permissions rule ([#32](https://github.com/jdx/jactionlint/issues/32)) ([736d914](https://github.com/jdx/jactionlint/commit/736d9143ef9f0e93d7af4033d61beb9749c6653a))
+* add opt-in require-shell and max-run-lines checks ([#26](https://github.com/jdx/jactionlint/issues/26)) ([7d1db16](https://github.com/jdx/jactionlint/commit/7d1db16547b2cf7f4ad6c8becfeffa66b1c102d6))
+* add opt-in timeout-check rule for job timeout-minutes ([#24](https://github.com/jdx/jactionlint/issues/24)) ([bb70379](https://github.com/jdx/jactionlint/commit/bb70379c685145d51d937a8492e474b4ce6d9ad7))
+* add self-hosted-runner.strict-labels config option ([#21](https://github.com/jdx/jactionlint/issues/21)) ([a9a4ce0](https://github.com/jdx/jactionlint/commit/a9a4ce00846f6c12aa0ac6d7831157f22fa5cb8f))
+* add support for 'code-quality' permission ([d147267](https://github.com/jdx/jactionlint/commit/d147267d7b660695f5596b5f4997aeb7d0ad2535))
+* detect caller/callee permission mismatch in reusable workflow calls ([#13](https://github.com/jdx/jactionlint/issues/13)) ([6699dde](https://github.com/jdx/jactionlint/commit/6699ddeafad2963dd3d7304c49f304bde267a7bd))
+* detect more attacker-controlled script injection inputs ([#22](https://github.com/jdx/jactionlint/issues/22)) ([c962011](https://github.com/jdx/jactionlint/commit/c962011abfedf3dd14ba5b9bdb5efe44abb701d4))
+* import upstream actionlint PRs and fix upstream issues [#747](https://github.com/jdx/jactionlint/issues/747)-[#750](https://github.com/jdx/jactionlint/issues/750) ([#11](https://github.com/jdx/jactionlint/issues/11)) ([143400e](https://github.com/jdx/jactionlint/commit/143400e247a35d935639d6666af0adf1acc4f6ec))
+* load user-global config from XDG_CONFIG_HOME ([#15](https://github.com/jdx/jactionlint/issues/15)) ([c72f98b](https://github.com/jdx/jactionlint/commit/c72f98baf03e3393fbd6beb3bede6396838ea945))
+* opt-in require-commit-hash lint (rhysd/actionlint[#436](https://github.com/jdx/jactionlint/issues/436)) ([#19](https://github.com/jdx/jactionlint/issues/19)) ([acbebb1](https://github.com/jdx/jactionlint/commit/acbebb1620974bd828b304651270f015f18c99e5))
+* opt-in required-actions rule (upstream [#474](https://github.com/jdx/jactionlint/issues/474)) ([#17](https://github.com/jdx/jactionlint/issues/17)) ([717783d](https://github.com/jdx/jactionlint/commit/717783daa98c14358a8f9f6f973accfac2db8589))
+* **shellcheck:** map errors to source lines in literal blocks ([#18](https://github.com/jdx/jactionlint/issues/18)) ([5d3c39a](https://github.com/jdx/jactionlint/commit/5d3c39a83433c1c0e02eb70ca963c26af334d99b))
+* support parallel steps (background, wait, wait-all, cancel, parallel) ([#12](https://github.com/jdx/jactionlint/issues/12)) ([35ddf4a](https://github.com/jdx/jactionlint/commit/35ddf4adb7141f5d72a0eb30948004d571261793))
+* support windows-11-vs2026-arm runner ([5231ce6](https://github.com/jdx/jactionlint/commit/5231ce61811b917e0350699bd8c0e4b980b96cc2))
+* Support YAML anchors and aliases in parser ([8ed4c46](https://github.com/jdx/jactionlint/commit/8ed4c46f9a0fadb046903c2909901e82e16e5c2c))
+* workflow_dispatch allows 25 inputs ([673e4d3](https://github.com/jdx/jactionlint/commit/673e4d3834732db13c597835355dd547c42b282c))
+
+
+### Bug Fixes
+
+* accept boolean wait-all and type-check parallel step expressions ([#31](https://github.com/jdx/jactionlint/issues/31)) ([cddd34b](https://github.com/jdx/jactionlint/commit/cddd34b660f21fa97a0c53f00641ecab6a0084ea))
+* add artifact-metadata ([ff3994b](https://github.com/jdx/jactionlint/commit/ff3994b5657e8001ba8f0a06d2bd7a76e3c3d684))
+* add artifact-metadata ([c2e42cf](https://github.com/jdx/jactionlint/commit/c2e42cf063a05ec1e6030c37fff29cac83f450b6))
+* add documented job workflow context properties ([f6542f4](https://github.com/jdx/jactionlint/commit/f6542f42ef9909de1e45ad3fa3a8c3313ae398a8))
+* Add undocumented github.repository_visibility option ([c391460](https://github.com/jdx/jactionlint/commit/c391460d64e8f2fba4e50fb9e58bd300b386ab7f))
+* Add undocumented github.repository_visibility option ([a533631](https://github.com/jdx/jactionlint/commit/a533631cef4541b60bcad8567effce66c4d19044))
+* add windows-11-arm to runner os ([180ef9e](https://github.com/jdx/jactionlint/commit/180ef9e66819b01391749d8b2be2dd344ceb038e))
+* check matrix exclude values against matrix rows only ([#20](https://github.com/jdx/jactionlint/issues/20)) ([65dfbe2](https://github.com/jdx/jactionlint/commit/65dfbe2def38e6fd0f6e1d05335430c57506a8af))
+* repair main's runner label test after concurrent merges ([#27](https://github.com/jdx/jactionlint/issues/27)) ([ada1320](https://github.com/jdx/jactionlint/commit/ada13200aceb83769c202396797e08e2ca3fe2ae))
+* report correct position for expression errors in literal blocks ([#28](https://github.com/jdx/jactionlint/issues/28)) ([2df981e](https://github.com/jdx/jactionlint/commit/2df981ea9f2bff72b48c65412a46ada75c8a1b0f))
+* Validating permission scopes: id-token and models ([9510b01](https://github.com/jdx/jactionlint/commit/9510b014a4df674d9a44d92929a128dbe95d6901))
+
+<a id="v1.7.12"></a>
+## [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) - 2026-03-30
+
+- Support the [`timezone` configuration in `on.schedule`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule) with checks for IANA timezone string. See the [documentation](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-cron-syntax-and-timezone) for more details. Note that actionlint starts to embed the timezone database in the executables from this version so the binary sizes slightly increase. ([#641](https://github.com/rhysd/actionlint/issues/641), thanks [@martincostello](https://github.com/martincostello))
+  ```yaml
+  on:
+    schedule:
+      # ERROR: The timezone is not a valid IANA timezone string
+      - cron: '*/5 * * * *'
+        timezone: 'Asia/Somewhere'
+  ```
+- Support the [`jobs.<job_name>.environment.deployment` configuration](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments#using-environments-without-deployments). ([#639](https://github.com/rhysd/actionlint/issues/639), thanks [@springmeyer](https://github.com/springmeyer))
+- Support the [`macos-26-intel` runner label](https://github.blog/changelog/2026-02-26-macos-26-is-now-generally-available-for-github-hosted-runners/). ([#629](https://github.com/rhysd/actionlint/issues/629), thanks [@hugovk](https://github.com/hugovk))
+- Fix the [table of webhook activity types](https://github.com/rhysd/actionlint/blob/main/all_webhooks.go) are outdated by rebuilding the [script to scrape the table](https://github.com/rhysd/actionlint/tree/main/scripts/generate-webhook-events) from scratch.
+- Support Go 1.26 and drop the support for Go 1.24. Now supported versions are 1.25 and 1.26.
+- Tests are run on arm64 Windows in CI.
+- Update the popular actions data set to the latest.
+
+[Changes][v1.7.12]
+
+
+<a id="v1.7.11"></a>
+## [v1.7.11](https://github.com/rhysd/actionlint/releases/tag/v1.7.11) - 2026-02-14
+
+- Support the [`case()` function](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#case) in `${{ }}` expressions which was recently added to GitHub Actions. ([#612](https://github.com/rhysd/actionlint/issues/612), [#614](https://github.com/rhysd/actionlint/issues/614), thanks [@heppu](https://github.com/heppu))
+  ```yaml
+  env:
+    # ERROR: case() requires an odd number of arguments
+    ENVIRONMENT: |-
+      ${{ case(
+        github.ref == 'refs/heads/main', 'production',
+        github.ref == 'refs/heads/staging', 'staging'
+      ) }}
+  ```
+- Support new `macos-26-large` and `windows-2025-vs2026` runner labels. See the [GitHub's announce](https://github.blog/changelog/2026-02-05-github-actions-early-february-2026-updates/) for more details. ([#615](https://github.com/rhysd/actionlint/issues/615), thanks [@hugovk](https://github.com/hugovk) and [@muzimuzhi](https://github.com/muzimuzhi))
+- Enable [Artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations) for the released binaries. From v1.7.11 [`gh` command](https://cli.github.com/) can verify the integrity of the downloaded binaries as follows. The verification is highly recommended in terms of supply chain security. ([#608](https://github.com/rhysd/actionlint/issues/608), thanks [@takaram](https://github.com/takaram))
+  ```console
+  $ gh release download --repo rhysd/actionlint --pattern '*_darwin_amd64.tar.gz' v1.7.11
+  $ gh attestation verify --repo rhysd/actionlint actionlint_1.7.11_darwin_amd64.tar.gz
+  Loaded digest sha256:17ffc17fed8f0258ef6ad4aed932d3272464c7ef7d64e1cb0d65aa97c9752107 for file://actionlint_1.7.11_darwin_amd64.tar.gz
+  Loaded 1 attestation from GitHub API
+
+  The following policy criteria will be enforced:
+  - Predicate type must match:................ https://slsa.dev/provenance/v1
+  - Source Repository Owner URI must match:... https://github.com/rhysd
+  - Source Repository URI must match:......... https://github.com/rhysd/actionlint
+  - Subject Alternative Name must match regex: (?i)^https://github.com/rhysd/actionlint/
+  - OIDC Issuer must match:................... https://token.actions.githubusercontent.com
+
+  ✓ Verification succeeded!
+
+  The following 1 attestation matched the policy criteria
+
+  - Attestation #1
+    - Build repo:..... rhysd/actionlint
+    - Build workflow:. .github/workflows/release.yaml@refs/tags/v1.7.11
+    - Signer repo:.... rhysd/actionlint
+    - Signer workflow: .github/workflows/release.yaml@refs/tags/v1.7.11
+  ```
+- Report path filters with `./` as error because they never match anything. ([#521](https://github.com/rhysd/actionlint/issues/521))
+  ```yaml
+  on:
+    push:
+      paths:
+        # ERROR: This never matches anything. `foo/bar.txt` is correct.
+        - ./foo/bar.txt
+  ```
+- Fix comparing matrix items when an item is a super set of another item. ([#523](https://github.com/rhysd/actionlint/issues/523), [#613](https://github.com/rhysd/actionlint/issues/613), thanks [@michaelgruenewald](https://github.com/michaelgruenewald))
+- Fix stack overflow crash by a recursive anchor in matrix items. ([#610](https://github.com/rhysd/actionlint/issues/610))
+- Fix an unassigned variable false positive from shellcheck by disabling SC2153 rule. ([#573](https://github.com/rhysd/actionlint/issues/573))
+- Reduce the number of memory allocations on resolving anchors.
+- Update the popular actions data set to the latest.
+- Update Go dependencies to the latest.
+- Remove legacy Homebrew formula in rhysd/actionlint repository in favor of the [cask package](https://github.com/rhysd/actionlint/blob/main/Casks/actionlint.rb). Note that this change does not affect Homebrew's official formula.
+- Add a link to the release page of the version in the [playground](https://rhysd.github.io/actionlint/).
+
+[Changes][v1.7.11]
+
+
+<a id="v1.7.10"></a>
+## [v1.7.10](https://github.com/rhysd/actionlint/releases/tag/v1.7.10) - 2025-12-30
+
+- Support [YAML anchors and aliases](https://yaml.org/spec/1.2.2/#71-alias-nodes) (`&anchor` and `*anchor`) in workflow files. In addition to parsing YAML anchors correctly, actionlint checks unused and undefined anchors. See the [document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#yaml-anchors) for more details. ([#133](https://github.com/rhysd/actionlint/issues/133), thanks [@srz-zumix](https://github.com/srz-zumix) for the initial implementation at [#568](https://github.com/rhysd/actionlint/issues/568) and [@alexaandru](https://github.com/alexaandru) for trying another approach at [#557](https://github.com/rhysd/actionlint/issues/557))
+  ```yaml
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      services:
+        nginx:
+          image: nginx:latest
+          credentials: &credentials
+            username: ${{ secrets.user }}
+            password: ${{ secrets.password }}
+      steps:
+        - run: ./download.sh
+          # OK: Valid alias to &credentials
+          env: *credentials
+        - run: ./check.sh
+          # ERROR: Undefined anchor 'credential'
+          env: *credential
+        - run: ./upload.sh
+          # ERROR: Unused anchor 'credentials'
+          env: &credentials
+  ```
+- Remove support for `*-xl` macOS runner labels because they were [dropped](https://github.blog/changelog/2024-08-19-notice-of-upcoming-deprecations-and-breaking-changes-in-github-actions-runners/). ([#592](https://github.com/rhysd/actionlint/issues/592), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Remove support for the macOS 13 runner labels because they were [dropped on Dec 4, 2025](https://github.blog/changelog/2025-09-19-github-actions-macos-13-runner-image-is-closing-down/). ([#593](https://github.com/rhysd/actionlint/issues/593), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+  - `macos-13`
+  - `macos-13-large`
+  - `macos-13-xlarge`
+- Increase the maximum number of inputs in the `workflow_dispatch` event from 10 to 25 because the limitation [was recently relaxed](https://github.blog/changelog/2025-12-04-actions-workflow-dispatch-workflows-now-support-25-inputs/). ([#598](https://github.com/rhysd/actionlint/issues/598), thanks [@Haegi](https://github.com/Haegi))
+- Support [`artifact-metadata` permission](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#defining-access-for-the-github_token-scopes) for workflow permissions. ([#602](https://github.com/rhysd/actionlint/issues/602), thanks [@martincostello](https://github.com/martincostello))
+- Detect more complicated constants at `if:` conditions as error. See the [rule document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#if-cond-constant) for more details.
+- Refactor the workflow parser with [Go iterators](https://pkg.go.dev/iter#hdr-Iterators). This slightly improves the performance and memory usage.
+- Fix parsing extra `{` and `}` characters in format string of `format()` function call. For example v1.7.9 didn't parse `"{{0} {1} {2}}"` correctly.
+- Detect an invalid value at `type` in workflow call inputs as error.
+- Report [YAML merge key](https://yaml.org/type/merge.html) `<<` as error because GitHub Actions doesn't support the syntax.
+- Check available contexts in expressions at `jobs.<job_id>.snapshot.if`.
+  ```yaml
+  snapshot:
+    image-name: my-custom-image
+    # ERROR: `env` context is not allowed here
+    if: ${{ env.USE_SNAPSHOT == 'true' }}
+  ```
+- Fix the instruction to install actionlint with `mise` in the installation document. ([#591](https://github.com/rhysd/actionlint/issues/591), thanks [@risu729](https://github.com/risu729))
+- Update the popular actions data set to the latest to include new major versions of the actions.
+
+[Changes][v1.7.10]
+
+
+<a id="v1.7.9"></a>
+## [v1.7.9](https://github.com/rhysd/actionlint/releases/tag/v1.7.9) - 2025-11-21
+
+- Add support for [`ubuntu-slim` runner](https://github.blog/changelog/2025-10-28-1-vcpu-linux-runner-now-available-in-github-actions-in-public-preview/) label. ([#585](https://github.com/rhysd/actionlint/issues/585), thanks [@cestorer](https://github.com/cestorer))
+- Check input deprecation in action by checking [`deprecationMessage` property](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#inputsinput_iddeprecationmessage). Using a deprecated input is reported as error if it is not marked as `required`. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#deprecated-inputs-usage) for more details. ([#580](https://github.com/rhysd/actionlint/issues/580))
+  ```yaml
+  - uses: reviewdog/action-actionlint@v1
+    with:
+      # ERROR: Using a deprecated input
+      fail_on_error: true
+  ```
+- Add support for the [Custom images](https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images) feature.
+  - Support [`image_version` workflow trigger](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version).
+    ```yaml
+    on:
+      image_version:
+        names:
+          - "MyNewImage"
+          - "MyOtherImage"
+        versions:
+          - 1.*
+          - 2.*
+    ```
+  - Support [`jobs.<job_id>.snapshot` syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot). To make actionlint recognize your own image generation runner, use [`self-hosted-runner.labels` config](https://github.com/rhysd/actionlint/blob/main/docs/config.md).
+    ```yaml
+    jobs:
+      build:
+        runs-on: my-image-generation-runner
+        snapshot:
+            image-name: my-custom-image
+            version: 2.*
+    ```
+- Report constant conditions at `if:` like `if: true` as error. Only very simple expressions like `true` or `false` are detected for now. See the [document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#if-cond-constant) for more details.
+- Check unexpected keys in inputs in [action metadata](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax).
+  ```yaml
+  inputs:
+    some_input:
+      # Error: `type` is not supported for inputs in action metadata
+      type: boolean
+  ```
+- Fix some invalid permissions are not reported as error in `id-token` and `models` scopes. ([#582](https://github.com/rhysd/actionlint/issues/582), thanks [@holtkampjs](https://github.com/holtkampjs))
+- Fix `args` and `entrypoint` inputs are not recognized at `uses:` when it's not a Docker action. ([#550](https://github.com/rhysd/actionlint/issues/550))
+- Set correct column in source position of YAML parse error.
+- Fix `credentials` cannot be configured with `${{ }}`. ([#590](https://github.com/rhysd/actionlint/issues/590))
+- Improve messages in syntax errors on parsing steps (`run:` and `uses:`). Available keys suggestion is now more accurate and unexpected keys are detected more accurately.
+- Fix the order of errors can be non-deterministic when multiple errors are caused at the same source positions.
+- Improve error messages showing suggestions on detecting invalid permissions.
+- Add instruction for installing actionlint with [mise package manager](https://mise.jdx.dev/getting-started.html). ([#589](https://github.com/rhysd/actionlint/issues/589), thanks [@jylenhof](https://github.com/jylenhof))
+- Fix outdated URLs in the document.
+- Add new [`actionlint.AllContexts` map constant](https://pkg.go.dev/github.com/rhysd/actionlint#pkg-variables) in Go API that contains the information about all context availability.
+- Update popular actions data set to the latest with several major versions of actions and the following new actions.
+  - `anthropics/claude-code-action`
+  - `openai/codex-action`
+  - `google-github-actions/run-gemini-cli`
+- Add `make cov` task to easily generate a code coverage report.
+- Make installing the formula version of `actionlint` pacakge from tap of this repository with Homebrew a hard error. Install the cask version instead following the instruction in the error message.
+
+[Changes][v1.7.9]
+
+
+<a id="v1.7.8"></a>
+## [v1.7.8](https://github.com/rhysd/actionlint/releases/tag/v1.7.8) - 2025-10-11
+
+- Support `models` permission in `permissions` section. ([#531](https://github.com/rhysd/actionlint/issues/531), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Support [`job.check_run_id` property](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context). ([#576](https://github.com/rhysd/actionlint/issues/576), thanks [@muzimuzhi](https://github.com/muzimuzhi) for fixing the type at [#577](https://github.com/rhysd/actionlint/issues/577))
+- Support `node24` runtime at `using` section in action metadata. ([#561](https://github.com/rhysd/actionlint/issues/561), thanks [@salmanmkc](https://github.com/salmanmkc))
+- Add support for the following runner labels.
+  - [`macos-26` and `macos-26-xlarge`](https://github.blog/changelog/2025-09-11-actions-macos-26-image-now-in-public-preview/) ([#572](https://github.com/rhysd/actionlint/issues/572), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+  - [`macos-15`](https://github.blog/changelog/2025-09-19-github-actions-macos-13-runner-image-is-closing-down/#what-you-need-to-do) ([#572](https://github.com/rhysd/actionlint/issues/572), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Drop support for the following runner labels which are no longer supported by GitHub.
+  - [`ubuntu-20.04`](https://github.com/actions/runner-images/issues/11101) ([#534](https://github.com/rhysd/actionlint/issues/534), thanks [@shogo82148](https://github.com/shogo82148))
+  - [`windows-2019`](https://github.blog/changelog/2025-04-15-upcoming-breaking-changes-and-releases-for-github-actions/#windows-server-2019-is-closing-down) ([#572](https://github.com/rhysd/actionlint/issues/572), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Support [`deprecationMessage`](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#inputsinput_iddeprecationmessage) in action inputs metadata. ([#540](https://github.com/rhysd/actionlint/issues/540), thanks [@saansh45](https://github.com/saansh45))
+- Support [`windows-11-arm` runner](https://github.blog/changelog/2025-04-14-windows-arm64-hosted-runners-now-available-in-public-preview/). ([#542](https://github.com/rhysd/actionlint/issues/542), thanks [@trim21](https://github.com/trim21))
+- Handle `ubuntu-latest` runner label as `ubuntu-24.04` and `macos-latest` runner label as `macos-15`.
+- Report mixing Intel Mac labels and Arm Mac labels as error.
+- Add new types to `issues` and `pull_request_target` webhooks.
+- Update the popular actions data set to the latest and add more actions to it. (thanks [@sethvargo](https://github.com/sethvargo) for fixing the `go generate` scripts)
+  - `actions/create-github-app-token`
+  - `actions/attest-sbom`
+  - `actions/ai-inference`
+  - `peter-evans/create-or-update-comment`
+  - `release-drafter/release-drafter`
+  - `SamKirkland/FTP-Deploy-Action`
+- Fix the version value in `actionlint -version` output can be empty.
+- Fix outdated URL links in some error messages and documents.
+- [Homebrew formula in this repository](https://github.com/rhysd/actionlint/blob/main/HomebrewFormula/actionlint.rb) is deprecated and [Homebrew cask](https://github.com/rhysd/actionlint/blob/main/Casks/actionlint.rb) is newly added instead because [GoReleaser no longer supports Homebrew formula update](https://goreleaser.com/deprecations/#brews). Note that Homebrew's official `actionlint` formula is still maintained. Please read the [documentation](https://github.com/rhysd/actionlint/blob/main/docs/install.md#homebrew) for more details.
+- Drop support for Go 1.23 and earlier because they are no longer maintained officially. Go 1.24 and later are supported to build actionlint.
+- Replace [`go-yaml/yaml@v3`](https://github.com/go-yaml/yaml) package with [`yaml/go-yaml@v4`](https://github.com/yaml/go-yaml) package. `go-yaml/yaml` was used for parsing workflow files however it was unmaintained. `yaml/go-yaml` is a successor of the library officially maintained by YAML organization. ([#575](https://github.com/rhysd/actionlint/issues/575))
+- Improve error messages on parsing workflow and action metadata files.
+
+[Changes][v1.7.8]
+
+
+<a id="v1.7.7"></a>
+## [v1.7.7](https://github.com/rhysd/actionlint/releases/tag/v1.7.7) - 2025-01-19
+
+- Support runner labels for [Linux arm64 hosted runners](https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/). ([#503](https://github.com/rhysd/actionlint/issues/503), [#504](https://github.com/rhysd/actionlint/issues/504), thanks [@martincostello](https://github.com/martincostello))
+  - `ubuntu-24.04-arm`
+  - `ubuntu-22.04-arm`
+- Update Go dependencies to the latest.
+- Update the popular actions data set to the latest.
+- Add Linux arm64 job to our CI workflow. Now actionlint is tested on the platform. ([#507](https://github.com/rhysd/actionlint/issues/507), thanks [@cclauss](https://github.com/cclauss))
+
+[Changes][v1.7.7]
+
+
+<a id="v1.7.6"></a>
+## [v1.7.6](https://github.com/rhysd/actionlint/releases/tag/v1.7.6) - 2025-01-04
+
+- Fix using contexts at specific workflow keys is incorrectly reported as not allowed. Affected workflow keys are as follows. ([#495](https://github.com/rhysd/actionlint/issues/495), [#497](https://github.com/rhysd/actionlint/issues/497), [#498](https://github.com/rhysd/actionlint/issues/498), [#500](https://github.com/rhysd/actionlint/issues/500))
+  - `jobs.<job_id>.steps.with.args`
+  - `jobs.<job_id>.steps.with.entrypoint`
+  - `jobs.<job_id>.services.<service_id>.env`
+- Update Go dependencies to the latest.
+
+[Changes][v1.7.6]
+
+
+<a id="v1.7.5"></a>
+## [v1.7.5](https://github.com/rhysd/actionlint/releases/tag/v1.7.5) - 2024-12-28
+
+- Strictly check available contexts in `${{ }}` placeholders following the ['Context availability' table](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#context-availability) in the official document.
+  - For example, `jobs.<job_id>.defaults.run.shell` allows `env` context but `shell` workflow keys in other places allow no context.
+    ```yaml
+    defaults:
+      run:
+        # ERROR: No context is available here
+        shell: ${{ env.SHELL }}
+
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            # OK: 'env' context is available here
+            shell: ${{ env.SHELL }}
+        steps:
+          - run: echo hello
+            # ERROR: No context is available here
+            shell: ${{ env.SHELL}}
+    ```
+- Check a string literal passed to `fromJSON()` call. This pattern is [popular](https://github.com/search?q=fromJSON%28%27+lang%3Ayaml&type=code) to create array or object constants because GitHub Actions does not provide the literal syntax for them. See the [document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#contexts-and-built-in-functions) for more details. ([#464](https://github.com/rhysd/actionlint/issues/464))
+  ```yaml
+  jobs:
+    test:
+      # ERROR: Key 'mac' does not exist in the object returned by the fromJSON()
+      runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
+      steps:
+        - run: echo This is a special branch!
+          # ERROR: Broken JSON string passed to fromJSON.
+          if: contains(fromJSON('["main","release","dev"'), github.ref_name)
+  ```
+- Allow passing command arguments to `-shellcheck` argument. ([#483](https://github.com/rhysd/actionlint/issues/483), thanks [@anuraaga](https://github.com/anuraaga))
+  - This is useful when you want to use alternative build of shellcheck like [go-shellcheck](https://github.com/wasilibs/go-shellcheck/).
+    ```sh
+    actionlint -shellcheck="go run github.com/wasilibs/go-shellcheck/cmd/shellcheck@latest"
+    ```
+- Support undocumented `repository_visibility`, `artifact_cache_size_limit`, `step_summary`, `output`, `state` properties in `github` context. ([#489](https://github.com/rhysd/actionlint/issues/489), thanks [@rasa](https://github.com/rasa) for adding `repository_visibility` property)
+- Remove `macos-12` runner label from known labels because it was [dropped](https://github.com/actions/runner-images/issues/10721) from GitHub-hosted runners on Dec. 3 and is no longer available.
+- Add `windows-2025` runner label to the known labels. The runner is in [public preview](https://github.blog/changelog/2024-12-19-windows-server-2025-is-now-in-public-preview/). ([#491](https://github.com/rhysd/actionlint/issues/491), thanks [@ericcornelissen](https://github.com/ericcornelissen))
+- Add `black` to the list of colors for `branding.color` action metadata. ([#485](https://github.com/rhysd/actionlint/issues/485), thanks [@eifinger](https://github.com/eifinger))
+- Add `table` to the list of icons for `branding.icon` action metadata.
+- Fix parsing escaped `{` in `format()` function call's first argument.
+- Fix the incorrect `join()` function overload. `join(s1: string, s2: string)` was wrongly accepted.
+- Update popular actions data set to the latest.
+  - Add `download-artifact/v3-node20` to the data set. ([#468](https://github.com/rhysd/actionlint/issues/468))
+  - Fix missing the `reviewdog/action-hadolint@v1` action input. ([#487](https://github.com/rhysd/actionlint/issues/487), thanks [@mi-wada](https://github.com/mi-wada))
+- Link to the documents of the stable version in actionlint `man` page and `-help` output.
+- Refactor `LintStdin()` API example and some unit tests. ([#472](https://github.com/rhysd/actionlint/issues/472), [#475](https://github.com/rhysd/actionlint/issues/475), thanks [@alexandear](https://github.com/alexandear))
+- Improve the configuration example in `actionlint.yaml` document to explain glob patterns for `paths`. ([#481](https://github.com/rhysd/actionlint/issues/481))
+
+[Changes][v1.7.5]
+
+
+<a id="v1.7.4"></a>
+## [v1.7.4](https://github.com/rhysd/actionlint/releases/tag/v1.7.4) - 2024-11-04
+
+- Disallow the usage of popular actions that run on `node16` runner. The `node16` runner [will reach the end of life on November 12](https://github.blog/changelog/2024-09-25-end-of-life-for-actions-node16/).
+  - In case of the error, please update your actions to the latest version so that they run on the latest `node20` runner.
+  - If you're using self-hosted runner and you cannot upgrade your runner to `node20` soon, please consider to ignore the error by the `paths` configuration described below.
+  - If you're using `actions/upload-artifact@v3` and `actions/download-artifact@v3` on GHES, please replace them with `actions/upload-artifact@v3-node20` and `actions/download-artifact@v3-node20`. ([#468](https://github.com/rhysd/actionlint/issues/468))
+- Provide the configuration for ignoring errors by regular expressions in `actionlint.yml` (or `actionlint.yaml`). Please see the [document](https://github.com/rhysd/actionlint/blob/v1.7.4/docs/config.md) for more details. ([#217](https://github.com/rhysd/actionlint/issues/217), [#342](https://github.com/rhysd/actionlint/issues/342))
+  - The `paths` is a mapping from the file path glob pattern to the corresponding configuration. The `ignore` configuration is a list of regular expressions to match error messages (similar to the `-ignore` command line option).
+    ```yaml
+    paths:
+      # This pattern matches any YAML file under the '.github/workflows/' directory.
+      .github/workflows/**/*.yaml:
+        ignore:
+          # Ignore the specific error from shellcheck
+          - 'shellcheck reported issue in this script: SC2086:.+'
+      # This pattern only matches '.github/workflows/release.yaml' file.
+      .github/workflows/release.yaml:
+        ignore:
+          # Ignore errors from the old runner check. This may be useful for (outdated) self-hosted runner environment.
+          - 'the runner of ".+" action is too old to run on GitHub Actions'
+    ```
+  - This configuration was not implemented initially because I wanted to keep the configuration as minimal as possible. However, due to several requests for it, the configuration has now been added.
+- Untrusted inputs check is safely skipped inside specific function calls. ([#459](https://github.com/rhysd/actionlint/issues/459), thanks [@IlyaGulya](https://github.com/IlyaGulya))
+  - For example, the following step contains the untrusted input `github.head_ref`, but it is safe because it's passed to the `contains()` argument.
+    ```yaml
+    - run: echo "is_release_branch=${{ contains(github.head_ref, 'release') }}" >> "$GITHUB_OUTPUT"
+    ```
+  - For more details, please read the [rule document](https://github.com/rhysd/actionlint/blob/v1.7.4/docs/checks.md#untrusted-inputs).
+- Recognize `gcr.io` and `gcr.dev` as the correct container registry hosts. ([#463](https://github.com/rhysd/actionlint/issues/463), thanks [@takaidohigasi](https://github.com/takaidohigasi))
+  - Note that it is recommended explicitly specifying the scheme like `docker://gcr.io/...`.
+- Remove `macos-x.0` runner labels which are no longer available. ([#452](https://github.com/rhysd/actionlint/issues/452))
+- Disable shellcheck [`SC2043`](https://www.shellcheck.net/wiki/SC2043) rule because it can cause false positives on checking `run:`. ([#355](https://github.com/rhysd/actionlint/issues/355))
+  - The [rule document](https://github.com/rhysd/actionlint/blob/v1.7.4/docs/checks.md#check-shellcheck-integ) was updated as well. ([#466](https://github.com/rhysd/actionlint/issues/466), thanks [@risu729](https://github.com/risu729))
+- Fix the error message was not deterministic when detecting cycles in `needs` dependencies.
+- Fix the check for `format()` function was not applied when the function name contains upper case like `Format()`. Note that function names in `${{ }}` placeholders are case-insensitive.
+- Update the popular actions data set to the latest.
+  - This includes the [new `ref` and `commit` outputs](https://github.com/actions/checkout/pull/1180) of `actions/checkout`.
+- Add [`actions/cache/save`](https://github.com/actions/cache/tree/main/save) and [`actions/cache/restore`](https://github.com/actions/cache/tree/main/restore) to the popular actions data set.
+- Links in the [README.md](https://github.com/rhysd/actionlint/blob/main/README.md) now point to the document of the latest version tag instead of HEAD of `main` branch.
+- Add [`Linter.LintStdin`](https://pkg.go.dev/github.com/rhysd/actionlint#Linter.LintStdin) method dedicated to linting STDIN instead of handling STDIN in `Command`.
+- (Dev) Add new [`check-checks` script](https://github.com/rhysd/actionlint/tree/main/scripts/check-checks) to maintain the ['Checks' document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md). It automatically updates the outputs and playground links for example inputs in the document. It also checks the document is up-to-date on CI. Please read the [document](https://github.com/rhysd/actionlint/blob/main/scripts/check-checks/README.md) for more details.
+
+[Documentation](https://github.com/rhysd/actionlint/tree/v1.7.4/docs)
+
+[Changes][v1.7.4]
+
+
+<a id="v1.7.3"></a>
+## [v1.7.3](https://github.com/rhysd/actionlint/releases/tag/v1.7.3) - 2024-09-29
+
+- Remove `macos-11` runner labels because [macOS 11 runner was dropped on 6/28/2024](https://github.blog/changelog/2024-05-20-actions-upcoming-changes-to-github-hosted-macos-runners/#macos-11-deprecation-and-removal). ([#451](https://github.com/rhysd/actionlint/issues/451), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Support `macos-15`, `macos-15-large`, and `macos-15-xlarge` runner labels. The macOS 15 runner is not globally available yet, but [they are available in beta](https://github.com/actions/runner-images?tab=readme-ov-file#available-images). ([#453](https://github.com/rhysd/actionlint/issues/453), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- Release artifact includes checksums for the released binaries. The file name is `actionlint_{version}_checksums.txt`. ([#449](https://github.com/rhysd/actionlint/issues/449))
+  - For example, the checksums for v1.7.3 can be found [here](https://github.com/rhysd/actionlint/releases/download/v1.7.3/actionlint_1.7.3_checksums.txt).
+- Fix `download-path` output is missing in `actions/download-artifact@v3` action. ([#442](https://github.com/rhysd/actionlint/issues/442))
+  - Note that the latest version `actions/download-artifact@v4` was not affected by this issue.
+- Support Go 1.23.
+
+[Documentation](https://github.com/rhysd/actionlint/blob/v1.7.3/docs/checks.md)
+
+[Changes][v1.7.3]
+
+
+<a id="v1.7.2"></a>
+## [v1.7.2](https://github.com/rhysd/actionlint/releases/tag/v1.7.2) - 2024-09-23
+
+- Fix child processes to run in parallel.
+- Update the popular actions data set to the latest. ([#442](https://github.com/rhysd/actionlint/issues/442), [#445](https://github.com/rhysd/actionlint/issues/445), [#446](https://github.com/rhysd/actionlint/issues/446), [#447](https://github.com/rhysd/actionlint/issues/447), thanks [@maikelvdh](https://github.com/maikelvdh))
+- Add support for checking branch filters on [`merge_group` event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#merge_group). ([#448](https://github.com/rhysd/actionlint/issues/448), thanks [@muzimuzhi](https://github.com/muzimuzhi))
+- [The playground](https://rhysd.github.io/actionlint/) now supports both light and dark modes and automatically applies the system's theme.
+- Fix releasing a failure on making a new winget package. ([#438](https://github.com/rhysd/actionlint/issues/438), thanks [@vedantmgoyal9](https://github.com/vedantmgoyal9))
+
+[Changes][v1.7.2]
+
+
+<a id="v1.7.1"></a>
+## [v1.7.1](https://github.com/rhysd/actionlint/releases/tag/v1.7.1) - 2024-05-28
+
+- Support `ubuntu-24.04` runner label, which was [recently introduced as beta](https://github.blog/changelog/2024-05-14-github-hosted-runners-public-beta-of-ubuntu-24-04-is-now-available/). ([#425](https://github.com/rhysd/actionlint/issues/425), thanks [@bitcoin-tools](https://github.com/bitcoin-tools))
+- Remove the support for `macos-10` runner label which was [officially dropped about 2 years ago](https://github.blog/changelog/2022-07-20-github-actions-the-macos-10-15-actions-runner-image-is-being-deprecated-and-will-be-removed-by-8-30-22/).
+- Remove the support for `windows-2016` runner label which was [officially dropped about 2 years ago](https://github.blog/changelog/2021-10-19-github-actions-the-windows-2016-runner-image-will-be-removed-from-github-hosted-runners-on-march-15-2022/).
+- Document URLs used in help output and links in the playground prefer specific version tag rather than `main` branch. For example,
+  - Before: https://github.com/rhysd/actionlint/tree/main/docs
+  - After: https://github.com/rhysd/actionlint/tree/v1.7.1/docs
+- Fix actionlint wrongly reports an error when using `ghcr.io` or `docker.io` at `image` field of action metadata file of Docker action without `docker://` scheme. ([#428](https://github.com/rhysd/actionlint/issues/428))
+  ```yaml
+  runs:
+    using: 'docker'
+    # This should be OK
+    image: 'ghcr.io/user/repo:latest'
+  ```
+- Fix checking `preactjs/compressed-size-action@v2` usage caused a false positive. ([#422](https://github.com/rhysd/actionlint/issues/422))
+- Fix an error message when invalid escaping is found in globs.
+- The design of the [playground page](https://rhysd.github.io/actionlint/) is overhauled following the upgrade of bulma package to v1.
+  - Current actionlint version is shown in the heading.
+  - The color theme is changed to the official dark theme.
+  - The list of useful links is added to the bottom of the page as 'Resources' section.
+
+[Changes][v1.7.1]
+
+
+<a id="v1.7.0"></a>
+## [v1.7.0](https://github.com/rhysd/actionlint/releases/tag/v1.7.0) - 2024-05-08
+
+- From this version, actionlint starts to check action metadata file `action.yml` (or `action.yaml`). At this point, only very basic checks are implemented and contents of `steps:` are not checked yet.
+  - It checks properties under `runs:` section (e.g. `main:` can be specified when it is a JavaScript action), `branding:` properties, and so on.
+    ```yaml
+    name: 'My action'
+    author: '...'
+    # ERROR: 'description' section is missing
+
+    branding:
+      # ERROR: Invalid icon name
+      icon: dog
+
+    runs:
+      # ERROR: Node.js runtime version is too old
+      using: 'node12'
+      # ERROR: The source file being run by this action does not exist
+      main: 'this-file-does-not-exist.js'
+      # ERROR: 'env' configuration is only allowed for Docker actions
+      env:
+        SOME_VAR: SOME_VALUE
+    ```
+  - actionlint still focuses on checking workflow files. So there is no way to directly specify `action.yml` as an argument of `actionlint` command. actionlint checks all local actions which are used by given workflows. If you want to use actionlint for your action development, prepare a test/example workflow which uses your action, and check it with actionlint instead.
+  - Checks for `steps:` contents are planned to be implemented. Since several differences are expected between `steps:` in workflow file and `steps:` in action metadata file (e.g. available contexts), the implementation is delayed to later version. And the current implementation of action metadata parser is ad hoc. I'm planning a large refactorying and breaking changes Go API around it are expected.
+- Add `runner.environment` property. ([#412](https://github.com/rhysd/actionlint/issues/412))
+  ```yaml
+  - run: echo 'Run by GitHub-hosted runner'
+    if: runner.environment == 'github-hosted'
+  ```
+- Using outdated popular actions is now detected at error. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#detect-outdated-popular-actions) for more details.
+  - Here 'outdated' means actions which use runtimes no longer supported by GitHub-hosted runners such as `node12`.
+    ```yaml
+    # ERROR: actions/checkout@v2 is using the outdated runner 'node12'
+    - uses: actions/checkout@v2
+    ```
+- Support `attestations` permission which was [recently added to GitHub Actions as beta](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds). ([#418](https://github.com/rhysd/actionlint/issues/418), thanks [@bdehamer](https://github.com/bdehamer))
+  ```yaml
+  permissions:
+    id-token: write
+    contents: read
+    attestations: write
+  ```
+- Check comparison expressions more strictly. Arbitrary types of operands can be compared as [the official document](https://docs.github.com/en/actions/learn-github-actions/expressions#operators) explains. However, comparisons between some types are actually meaningless because the values are converted to numbers implicitly. actionlint catches such meaningless comparisons as errors. Please see [the check document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-comparison-types) for more details.
+  ```yaml
+  on:
+    workflow_call:
+      inputs:
+        timeout:
+          type: boolean
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo 'called!'
+          # ERROR: Comparing string to object is always evaluated to false
+          if: ${{ github.event == 'workflow_call' }}
+        - run: echo 'timeout is too long'
+          # ERROR: Comparing boolean value with `>` doesn't make sense
+          if: ${{ inputs.timeout > 60 }}
+  ```
+- Follow the update that `macos-latest` is now an alias to `macos-14` runner.
+- Support a custom python shell by `pyflakes` rule.
+- Add workaround actionlint reports that `dorny/paths-filter`'s `predicate-quantifier` input is not defined. ([#416](https://github.com/rhysd/actionlint/issues/416))
+- Fix the type of a conditional expression by comparison operators is wider than expected by implementing type narrowing. ([#384](https://github.com/rhysd/actionlint/issues/384))
+  - For example, the type of following expression should be `number` but it was actually `string | number` and actionlint complained that `timeout-minutes` must take a number value.
+    ```yaml
+    timeout-minutes: ${{ env.FOO && 10 || 60 }}
+    ```
+- Fix `${{ }}` placeholder is not available at `jobs.<job_id>.services`. ([#402](https://github.com/rhysd/actionlint/issues/402))
+  ```yaml
+  jobs:
+    test:
+      services: ${{ fromJSON('...') }}
+      runs-on: ubuntu-latest
+      steps:
+        - run: ...
+  ```
+- Do not check outputs of `google-github-actions/get-secretmanager-secrets` because this action sets outputs dynamically. ([#404](https://github.com/rhysd/actionlint/issues/404))
+- Fix `defaults.run` is ignored on detecting the shell used in `run:`. ([#409](https://github.com/rhysd/actionlint/issues/409))
+  ```yaml
+  defaults:
+    run:
+      shell: pwsh
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        # This was wrongly detected as bash script
+        - run: $Env:FOO = "FOO"
+  ```
+- Fix parsing a syntax error reported from pyflakes when checking a Python script in `run:`. ([#411](https://github.com/rhysd/actionlint/issues/411))
+  ```yaml
+  - run: print(
+    shell: python
+  ```
+- Skip checking `exclude:` items in `matrix:` when they are constructed from `${{ }}` dynamically. ([#414](https://github.com/rhysd/actionlint/issues/414))
+  ```yaml
+  matrix:
+    foo: ['a', 'b']
+    exclude:
+      # actionlint complained this value didn't exist in matrix combinations
+      - foo: ${{ env.EXCLUDE_FOO }}
+  ```
+- Fix checking `exclude:` items when `${{ }}` is used in nested arrays at matrix items.
+  ```yaml
+  matrix:
+    foo:
+      - ["${{ fromJSON('...') }}"]
+    exclude:
+      # actionlint complained this value didn't match to any matrix combinations
+      - foo: ['foo']
+  ```
+- Update popular actions data set. New major versions are added and the following actions are newly added.
+  - `peaceiris/actions-hugo`
+  - `actions/attest-build-provenance`
+  - `actions/add-to-project`
+  - `octokit/graphql-action`
+- Update Go dependencies to the latest.
+- Reduce the size of `actionlint` executable by removing redundant data from popular actions data set.
+  - x86_64 executable binary size was reduced from 6.9MB to 6.7MB (2.9% smaller).
+  - Wasm binary size was reduced from 9.4MB to 8.9MB (5.3% smaller).
+- Describe how to [integrate actionlint to Pulsar Edit](https://web.pulsar-edit.dev/packages/linter-github-actions) in [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#pulsar-edit). ([#408](https://github.com/rhysd/actionlint/issues/408), thanks [@mschuchard](https://github.com/mschuchard))
+- Update outdated action versions in the usage document. ([#413](https://github.com/rhysd/actionlint/issues/413), thanks [@naglis](https://github.com/naglis))
+
+[Changes][v1.7.0]
+
+
+<a id="v1.6.27"></a>
+## [v1.6.27](https://github.com/rhysd/actionlint/releases/tag/v1.6.27) - 2024-02-24
+
+- Add macOS 14 runner labels for [Apple Silicon support](https://github.blog/changelog/2024-01-30-github-actions-macos-14-sonoma-is-now-available/). The following labels are added. (thanks [@harryzcy](https://github.com/harryzcy), [#392](https://github.com/rhysd/actionlint/issues/392))
+  - `macos-14`
+  - `macos-14-xlarge`
+  - `macos-14-large`
+- Remove `ubuntu-18.04` runner label from runners list since [it is no longer supported](https://github.blog/changelog/2022-08-09-github-actions-the-ubuntu-18-04-actions-runner-image-is-being-deprecated-and-will-be-removed-by-12-1-22/). ([#363](https://github.com/rhysd/actionlint/issues/363))
+- Allow glob patterns in `self-hosted-runner.labels` configuration. For example, the following configuration defines any runner labels prefixed with `private-linux-`. (thanks [@kishaningithub](https://github.com/kishaningithub), [#378](https://github.com/rhysd/actionlint/issues/378))
+  ```yaml
+  self-hosted-runner:
+    labels:
+      - private-linux-*
+  ```
+- Fix a race condition bug when `-format` option is used for linting multiple workflow files. Thanks [@ReinAchten-TomTom](https://github.com/ReinAchten-TomTom) for your help on the investigation. ([#370](https://github.com/rhysd/actionlint/issues/370))
+- Fix a race condition due to conflicts between some goroutine which starts to run shellcheck process and other goroutine which starts to wait until all processes finish.
+- The popular actions data set was updated to the latest and the following actions were newly added. (thanks [@jmarshall](https://github.com/jmarshall), [#380](https://github.com/rhysd/actionlint/issues/380))
+  - `google-github-actions/auth`
+  - `google-github-actions/get-secretmanager-secrets`
+  - `google-github-actions/setup-gcloud`
+  - `google-github-actions/upload-cloud-storage`
+  - `pulumi/actions`
+  - `pypa/gh-action-pypi-publish`
+- Add support for larger runner labels. The following labels are added. (thanks [@therealdwright](https://github.com/therealdwright), [#371](https://github.com/rhysd/actionlint/issues/371))
+  - `windows-latest-8-cores`
+  - `ubuntu-latest-4-cores`
+  - `ubuntu-latest-8-cores`
+  - `ubuntu-latest-16-cores`
+- The following WebHook types are supported for `pull_request` event.
+  - `enqueued`
+  - `dequeued`
+  - `milestoned`
+  - `demilestoned`
+- Explain how to control shellckeck behavior in the [shellcheck rule document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-shellcheck-integ). Use `SHELLCHECK_OPTS` environment variable to pass arguments to shellcheck. See [the shellcheck's official document](https://github.com/koalaman/shellcheck/wiki/Integration#environment-variables) for more details.
+  ```
+  # Enable some optional rules
+  SHELLCHECK_OPTS='--enable=avoid-nullary-conditions' actionlint
+  # Disable some rules
+  SHELLCHECK_OPTS='--exclude=SC2129' actionlint
+  ```
+- Explicitly specify `docker.io` host name in pre-commit hook. (thanks [@gotmax23](https://github.com/gotmax23), [#382](https://github.com/rhysd/actionlint/issues/382))
+- Explain how to report issues and send patches in [CONTRIBUTING.md](https://github.com/rhysd/actionlint/blob/main/CONTRIBUTING.md).
+- Fix the link to super-linter project. (thanks [@zkoppert](https://github.com/zkoppert), [#376](https://github.com/rhysd/actionlint/issues/376))
+- Add the instruction to install actionlint via the Arch Linux's official repository. (thanks [@sorairolake](https://github.com/sorairolake), [#381](https://github.com/rhysd/actionlint/issues/381))
+- Prefer fixed revisions in the pre-commit usage. (thanks [@corneliusroemer](https://github.com/corneliusroemer), [#354](https://github.com/rhysd/actionlint/issues/354))
+- Add instructions to use actionlint with Emacs. (thanks [@tirimia](https://github.com/tirimia), [#341](https://github.com/rhysd/actionlint/issues/341))
+- Add instructions to use actionlint with Vim and Neovim text editors.
+- Add [`actionlint.RuleBase.Config`](https://pkg.go.dev/github.com/rhysd/actionlint#RuleBase.Config) method to get the actionlint configuration passed to rules. (thanks [@hugo-syn](https://github.com/hugo-syn), [#387](https://github.com/rhysd/actionlint/issues/387))
+- Add [`actionlint.ContainsExpression`](https://pkg.go.dev/github.com/rhysd/actionlint#ContainsExpression) function to check if the given string contains `${{ }}` placeholders or not. (thanks [@hugo-syn](https://github.com/hugo-syn), [#388](https://github.com/rhysd/actionlint/issues/388))
+- Support Go 1.22 and set the minimum supported Go version to 1.18 for `x/sys` package.
+- Update Go dependencies to the latest.
+
+[Changes][v1.6.27]
+
+
+<a id="v1.6.26"></a>
+## [v1.6.26](https://github.com/rhysd/actionlint/releases/tag/v1.6.26) - 2023-09-18
+
+- Several template fields and template actions were added. All fields and actions are listed in [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#format-error-messages). Please read it for more details. ([#311](https://github.com/rhysd/actionlint/issues/311))
+  - By these additions, now actionlint can output the result in [the SARIF format](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html). SARIF is a format for the output of static analysis tools used by [GitHub CodeQL](https://codeql.github.com/). [the example Go template](https://github.com/rhysd/actionlint/blob/main/testdata/format/sarif_template.txt) to format actionlint output in SARIF.
+    ```sh
+    actionlint -format "$(cat /path/to/sarif_template.txt)" > output.json
+    ```
+  - `allKinds` returns the kinds (lint rules) information as an array. You can include what lint rules are defined in the command output.
+  - `toPascalCase` converts snake case (`foo_bar`) or kebab case (`foo-bar`) into pascal case (`FooBar`).
+- Report an error when the condition at `if:` is always evaluated to true. See [the check document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#if-cond-always-true) to know more details. ([#272](https://github.com/rhysd/actionlint/issues/272))
+  ```yaml
+  # ERROR: All the following `if:` conditions are always evaluated to true
+  - run: echo 'Commit is pushed'
+    if: |
+      ${{ github.event_name == 'push' }}
+  - run: echo 'Commit is pushed'
+    if: "${{ github.event_name == 'push' }} "
+  - run: echo 'Commit is pushed to main'
+    if: ${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}
+  ```
+- Fix actionlint didn't understand `${{ }}` placeholders in environment variable names. ([#312](https://github.com/rhysd/actionlint/issues/312))
+  ```yaml
+  env:
+    "${{ steps.x.outputs.value }}": "..."
+  ```
+- Fix type of matrix row when some expression is assigned to it with `${{ }}` ([#285](https://github.com/rhysd/actionlint/issues/285))
+  ```yaml
+  strategy:
+    matrix:
+      test:
+        # Matrix rows are assigned from JSON string
+        - ${{ fromJson(inputs.matrix) }}
+  steps:
+    - run: echo ${{ matrix.test.foo.bar }}
+  ```
+- Fix checking `exclude` of matrix was incorrect when some matrix row is dynamically constructed with `${{ }}`. ([#261](https://github.com/rhysd/actionlint/issues/261))
+  ```yaml
+  strategy:
+    matrix:
+      build-type:
+        - debug
+        - ${{ fromJson(inputs.custom-build-type) }}
+      exclude:
+        # 'release' is not listed in 'build-type' row, but it should not be reported as error
+        # since the second row of 'build-type' is dynamically constructed with ${{ }}.
+        - build-type: release
+  ```
+- Fix checking `exclude` of matrix was incorrect when object is nested at row of the matrix. ([#249](https://github.com/rhysd/actionlint/issues/249))
+  ```yaml
+  matrix:
+    os:
+      - name: Ubuntu
+        matrix: ubuntu
+      - name: Windows
+        matrix: windows
+    arch:
+      - name: ARM
+        matrix: arm
+      - name: Intel
+        matrix: intel
+    exclude:
+      # This should exclude { os: { name: Windows, matrix: windows }, arch: {name: ARM, matrix: arm } }
+      - os:
+          matrix: windows
+        arch:
+          matrix: arm
+  ```
+- Fix data race when `actionlint.yml` config file is used by multiple goroutines to check multiple workflow files. ([#333](https://github.com/rhysd/actionlint/issues/333))
+- Check keys' case sensitivity. ([#302](https://github.com/rhysd/actionlint/issues/302))
+  ```yaml
+  steps:
+    # ERROR: 'run:' is correct
+    - ruN: echo "hello"
+  ```
+- Add `number` as [input type of `workflow_dispatch` event](https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context). ([#316](https://github.com/rhysd/actionlint/issues/316))
+- Check max number of inputs of `workflow_dispatch` event is 10.
+- Check numbers at `timeout-minutes` and `max-parallel` are greater than zero.
+- Add Go APIs to define a custom rule. Please read [the code example](https://pkg.go.dev/github.com/rhysd/actionlint/#example_Linter_yourOwnRule) to know the usage.
+  - Make some [`RuleBase`](https://pkg.go.dev/github.com/rhysd/actionlint#RuleBase) methods public which are useful to implement your own custom rule type. (thanks [@hugo-syn](https://github.com/hugo-syn), [#327](https://github.com/rhysd/actionlint/issues/327), [#331](https://github.com/rhysd/actionlint/issues/331))
+  - `OnRulesCreated` field is added to [`LinterOptions`](https://pkg.go.dev/github.com/rhysd/actionlint#LinterOptions) struct. You can modify applied rules with the hook (add your own rule, remove some rule, ...).
+- Add `NewProject()` Go API to create a [`Project`](https://pkg.go.dev/github.com/rhysd/actionlint#Project) instance.
+- Fix tests failed when sources are downloaded from `.tar.gz` link. ([#307](https://github.com/rhysd/actionlint/issues/307))
+- Improve [the pre-commit document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#pre-commit) to explain all pre-commit hooks by this repository.
+- Clarify the regular expression syntax of `-ignore` option is [RE2](https://github.com/google/re2/wiki/Syntax). ([#320](https://github.com/rhysd/actionlint/issues/320))
+- Use ubuntu-latest runner to create winget release. (thanks [@sitiom](https://github.com/sitiom), [#308](https://github.com/rhysd/actionlint/issues/308))
+- Update popular actions data set, available contexts, webhook types to the latest.
+  - Fix typo in `watch` webhook's types (thanks [@suzuki-shunsuke](https://github.com/suzuki-shunsuke), [#334](https://github.com/rhysd/actionlint/issues/334))
+  - Add `secret_source` property to [`github` context](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context). (thanks [@asml-mdroogle](https://github.com/asml-mdroogle), [#339](https://github.com/rhysd/actionlint/issues/339))
+  - Many new major releases are added to the popular actions data set (including `actions/checkout@v4`).
+- Use Go 1.21 to build release binaries.
+- Update Go dependencies to the latest. (thanks [@harryzcy](https://github.com/harryzcy), [#322](https://github.com/rhysd/actionlint/issues/322))
+
+[Changes][v1.6.26]
+
+
+<a id="v1.6.25"></a>
+## [v1.6.25](https://github.com/rhysd/actionlint/releases/tag/v1.6.25) - 2023-06-15
+
+- Parse new syntax at `runs-on:`. Now `runs-on:` can have `group:` and `labels:` configurations. Please read [the official document](https://docs.github.com/en/actions/using-github-hosted-runners/using-larger-runners#running-jobs-on-your-runner) for more details. ([#280](https://github.com/rhysd/actionlint/issues/280))
+  ```yaml
+  runs-on:
+    group: ubuntu-runners
+    labels: ubuntu-20.04-16core
+  ```
+- Add support for macOS XL runners. `macos-latest-xl`, `macos-13-xl`, `macos-12-xl` labels are available at `runs-on:`. ([#299](https://github.com/rhysd/actionlint/issues/299), thanks [@woa7](https://github.com/woa7))
+- Find Git project directory from `-stdin-filename` command line argument. Even if the workflow content is passed via stdin, actionlint can recognize reusable workflows depended by the workflow using file path passed at `-stdin-filename` argument. ([#283](https://github.com/rhysd/actionlint/issues/283))
+- Fix order of errors is not deterministic when multiple errors happen at the same location (file name, line number, column number). It happens only when building actionlint with Go 1.20 or later.
+- Fix type name of `watch` webhook.
+- Fix type of matrix row (property of `matrix` context) when `${{ }}` is used in the row value. ([#294](https://github.com/rhysd/actionlint/issues/294))
+- Fix `go install ./...` doesn't work. ([#297](https://github.com/rhysd/actionlint/issues/297))
+- Update `actionlint` pre-commit hook to use Go toolchain. Now pre-commit automatically installs `actionlint` command so you don't need to install it manually. Note that this hook requires pre-commit v3.0.0 or later. For those who don't have Go toolchain, the previous hook is maintained as `actionlint-system` hook. Please read [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#pre-commit) to know the usage details. ([#301](https://github.com/rhysd/actionlint/issues/301), thanks [@Freed-Wu](https://github.com/Freed-Wu) and [@dokempf](https://github.com/dokempf))
+- Update Go dependencies to the latest.
+- Update npm dependencies for playground to the latest and fix optimizing Wasm binary with `wasm-opt`.
+- Update popular actions data set. New major versions and new inputs of many popular actions are now supported like `sparse-checkout` input of `actions/checkout` action.  ([#305](https://github.com/rhysd/actionlint/issues/305))
+- Fix outdated document for Problem Matchers. ([#289](https://github.com/rhysd/actionlint/issues/289), thanks [@carlcsaposs-canonical](https://github.com/carlcsaposs-canonical))
+- Fix outdated links in document for super-linter. ([#303](https://github.com/rhysd/actionlint/issues/303), thanks [@gmacario](https://github.com/gmacario))
+- Automate releasing the Winget package with GitHub Actions. ([#276](https://github.com/rhysd/actionlint/issues/276), [#293](https://github.com/rhysd/actionlint/issues/293), thanks [@sitiom](https://github.com/sitiom))
+
+[Changes][v1.6.25]
+
+
+<a id="v1.6.24"></a>
+## [v1.6.24](https://github.com/rhysd/actionlint/releases/tag/v1.6.24) - 2023-04-04
+
+- Add support for [configuration variables](https://docs.github.com/en/actions/learn-github-actions/variables). However actionlint doesn't know what variables are defined in the repository on GitHub. To notify them, [you need to configure your variables in your repository](https://github.com/rhysd/actionlint/blob/main/docs/config.md).
+  ```yaml
+  config-variables:
+    - DEFAULT_RUNNER
+    - DEFAULT_TIMEOUT
+  ```
+- Fix type error when `inputs` context is shared by multiple events. ([#263](https://github.com/rhysd/actionlint/issues/263))
+- Add document for [how to install actionlint with winget](https://github.com/rhysd/actionlint/blob/main/docs/install.md#winget). ([#267](https://github.com/rhysd/actionlint/issues/267), thanks [@sitiom](https://github.com/sitiom))
+- Add document for [how to integrate actionlint to trunk.io](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#trunk). ([#269](https://github.com/rhysd/actionlint/issues/269), thanks [@dapirian](https://github.com/dapirian))
+- Add document for [how to install actionlint with Nix package manager](https://github.com/rhysd/actionlint/blob/main/docs/install.md#nix). ([#273](https://github.com/rhysd/actionlint/issues/273), thanks [@diohabara](https://github.com/diohabara))
+- Update popular actions data set to the latest
+- Add support for Go 1.20 and build release binaries with Go 1.20
+
+
+[Changes][v1.6.24]
+
+
+<a id="v1.6.23"></a>
+## [v1.6.23](https://github.com/rhysd/actionlint/releases/tag/v1.6.23) - 2023-01-19
+
+- Fix using [`vars` context](https://docs.github.com/en/actions/learn-github-actions/contexts#vars-context) causes 'undefined context' error. This context is for ['Variables' feature](https://docs.github.com/en/actions/learn-github-actions/variables) which was recently added to GitHub Actions. ([#260](https://github.com/rhysd/actionlint/issues/260))
+  ```yaml
+  - name: Use variables
+    run: |
+      echo "repository variable : ${{ vars.REPOSITORY_VAR }}"
+      echo "organization variable : ${{ vars.ORGANIZATION_VAR }}"
+      echo "overridden variable : ${{ vars.OVERRIDE_VAR }}"
+      echo "variable from shell environment : $env_var"
+  ```
+- Fix 'no property' error on accessing some `github` context's properties which were added recently. ([#259](https://github.com/rhysd/actionlint/issues/259))
+- Update popular actions data set and add some new actions to it
+  - [actions/dependency-review-action](https://github.com/actions/dependency-review-action)
+  - [dtolnay/rust-toolchain](https://github.com/dtolnay/rust-toolchain)
+- Playground is improved by making the right pane sticky. It is useful when many errors are reported. ([#253](https://github.com/rhysd/actionlint/issues/253), thanks [@ericcornelissen](https://github.com/ericcornelissen))
+- Update Go modules dependencies and playground dependencies
+
+[Changes][v1.6.23]
+
+
+<a id="v1.6.22"></a>
+## [v1.6.22](https://github.com/rhysd/actionlint/releases/tag/v1.6.22) - 2022-11-01
+
+- Detect deprecated workflow commands such as [`set-output` or `save-state`](https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/) and suggest the alternative. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-deprecated-workflow-commands) for more details. ([#234](https://github.com/rhysd/actionlint/issues/234))
+  ```yaml
+  # ERROR: This format of 'set-output' workflow command was deprecated
+  - run: echo '::set-output name=foo::bar'
+  ```
+- Fix that `${{ }}` expression at `on.workflow_call.inputs.<id>.default` caused an error. ([#235](https://github.com/rhysd/actionlint/issues/235))
+  ```yaml
+  on:
+    workflow_call:
+      inputs:
+        project:
+          type: string
+          # OK: The default value is generated dynamically
+          default: ${{ github.event.repository.name }}
+  ```
+- Improve type of `inputs` context to grow gradually while checking inputs in `workflow_call` event.
+  ```yaml
+  on:
+    workflow_call:
+      inputs:
+        input1:
+          type: string
+          # ERROR: `input2` is not defined yet
+          default: ${{ inputs.input2 }}
+        input2:
+          type: string
+          # OK: `input1` was already defined above
+          default: ${{ inputs.input1 }}
+  ```
+- Check types of default values of workflow call inputs even if `${{ }}` expression is used.
+  ```yaml
+  on:
+    workflow_call:
+      inputs:
+        input1:
+          type: boolean
+        input2:
+          type: number
+          # ERROR: Boolean value cannot be assigned to number
+          default: ${{ inputs.input1 }}
+  ```
+- Fix the download script is broken since GHE server does not support the new `set-output` format yet. ([#240](https://github.com/rhysd/actionlint/issues/240))
+- Replace the deprecated `set-output` workflow command in our own workflows. ([#239](https://github.com/rhysd/actionlint/issues/239), thanks [@Mrtenz](https://github.com/Mrtenz))
+- Popular actions data set was updated to the latest as usual.
+
+[Changes][v1.6.22]
+
+
+<a id="v1.6.21"></a>
+## [v1.6.21](https://github.com/rhysd/actionlint/releases/tag/v1.6.21) - 2022-10-09
+
+- [Check contexts availability](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#ctx-spfunc-availability). Some contexts limit where they can be used. For example, `jobs.<job_id>.env` workflow key does not allow accessing `env` context, but `jobs.<job_id>.steps.env` allows. See [the official document](https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability) for the complete list of contexts availability. ([#180](https://github.com/rhysd/actionlint/issues/180))
+  ```yaml
+  ...
+
+  env:
+    TOPLEVEL: ...
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      env:
+        # ERROR: 'env' context is not available here
+        JOB_LEVEL: ${{ env.TOPLEVEL }}
+      steps:
+        - env:
+            # OK: 'env' context is available here
+            STEP_LEVEL: ${{ env.TOPLEVEL }}
+          ...
+  ```
+  actionlint reports the context is not available and what contexts are available as follows:
+  ```
+  test.yaml:11:22: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+     |
+  11 |       JOB_LEVEL: ${{ env.TOPLEVEL }}
+     |                      ^~~~~~~~~~~~
+  ```
+- [Check special functions availability](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#ctx-spfunc-availability). Some functions limit where they can be used. For example, status functions like `success()` or `failure()` are only available in conditions of `if:`. See [the official document](https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability) for the complete list of special functions availability. ([#214](https://github.com/rhysd/actionlint/issues/214))
+  ```yaml
+  ...
+
+  steps:
+    # ERROR: 'success()' function is not available here
+    - run: echo 'Success? ${{ success() }}'
+      # OK: 'success()' function is available here
+      if: success()
+  ```
+  actionlint reports `success()` is not available and where the function is available as follows:
+  ```
+  test.yaml:8:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+    |
+  8 |       - run: echo 'Success? ${{ success() }}'
+    |                                 ^~~~~~~~~
+  ```
+- Fix `inputs` context is not available in `run-name:` section. ([#223](https://github.com/rhysd/actionlint/issues/223))
+- Allow dynamic shell configuration like `shell: ${{ env.SHELL }}`.
+- Fix no error is reported when `on:` does not exist at toplevel. ([#232](https://github.com/rhysd/actionlint/issues/232))
+- Fix an error position is not correct when the error happens at root node of workflow AST.
+- Fix an incorrect empty event is parsed when `on:` section is empty.
+- Fix the error message when parsing an unexpected key on toplevel. (thanks [@norwd](https://github.com/norwd), [#231](https://github.com/rhysd/actionlint/issues/231))
+- Add `in_progress` type to `workflow_run` webhook event trigger.
+- Describe [the actionlint extension](https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/) for [Nova.app](https://nova.app) in [the usage document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#nova). (thanks [@jbergstroem](https://github.com/jbergstroem), [#222](https://github.com/rhysd/actionlint/issues/222))
+- Note [Super-Linter](https://github.com/github/super-linter) uses a different place for configuration file. (thanks [@per-oestergaard](https://github.com/per-oestergaard), [#227](https://github.com/rhysd/actionlint/issues/227))
+- Add `actions/setup-dotnet@v3` to popular actions data set.
+- [`generate-availability` script](https://github.com/rhysd/actionlint/tree/main/scripts/generate-availability) was created to scrape the information about contexts and special functions availability from the official document. The information can be used through [`actionlint.WorkflowKeyAvailability()`](https://pkg.go.dev/github.com/rhysd/actionlint#WorkflowKeyAvailability) Go API. This script is run once a week on CI to keep the information up-to-date.
+
+
+
+[Changes][v1.6.21]
+
+
+<a id="v1.6.20"></a>
+## [v1.6.20](https://github.com/rhysd/actionlint/releases/tag/v1.6.20) - 2022-09-30
+
+- Support `run-name` which [GitHub introduced recently](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/). It is a name of workflow run dynamically configured. See [the official document](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#run-name) for more details. ([#220](https://github.com/rhysd/actionlint/issues/220))
+  ```yaml
+  on: push
+  run-name: Deploy by @${{ github.actor }}
+
+  jobs:
+    ...
+  ```
+- Add `end_column` property to JSON representation of error. The property indicates a column of the end position of `^~~~~~~` indicator in snippet. Note that `end_column` is equal to `column` when the indicator cannot be shown. ([#219](https://github.com/rhysd/actionlint/issues/219))
+  ```console
+  $ actionlint -format '{{json .}}' test.yaml | jq
+  [
+    {
+      "message": "property \"unknown_prop\" is not defined in object type {arch: string; debug: string; name: string; os: string; temp: string; tool_cache: string; workspace: string}",
+      "filepath": "test.yaml",
+      "line": 7,
+      "column": 23,
+      "kind": "expression",
+      "snippet": "      - run: echo ${{ runner.unknown_prop }}\n                      ^~~~~~~~~~~~~~~~~~~",
+      "end_column": 41
+    }
+  ]
+  ```
+- Overhaul the workflow parser to parse workflow keys in case-insensitive. This is a work derived from the fix of [#216](https://github.com/rhysd/actionlint/issues/216). Now the parser parses all workflow keys in case-insensitive way correctly. Note that permission names at `permissions:` are exceptionally case-sensitive.
+  - This fixes properties of `inputs` for `workflow_dispatch` were not case-insensitive.
+  - This fixes inputs and outputs of local actions were not handled in case-insensitive way.
+- Update popular actions data set. `actions/stale@v6` was newly added.
+
+[Changes][v1.6.20]
+
+
+<a id="v1.6.19"></a>
+## [v1.6.19](https://github.com/rhysd/actionlint/releases/tag/v1.6.19) - 2022-09-22
+
+- Fix inputs, outputs, and secrets of reusable workflow should be case-insensitive. ([#216](https://github.com/rhysd/actionlint/issues/216))
+  ```yaml
+  # .github/workflows/reusable.yaml
+  on:
+    workflow_call:
+      inputs:
+        INPUT_UPPER:
+          type: string
+        input_lower:
+          type: string
+      secrets:
+        SECRET_UPPER:
+        secret_lower:
+  ...
+
+  # .github/workflows/test.yaml
+  ...
+
+  jobs:
+    caller:
+      uses: ./.github/workflows/reusable.yaml
+      # Inputs and secrets are case-insensitive. So all the followings should be OK
+      with:
+        input_upper: ...
+        INPUT_LOWER: ...
+      secrets:
+        secret_upper: ...
+        SECRET_LOWER: ...
+  ```
+- Describe [how to install specific version of `actionlint` binary with the download script](https://github.com/rhysd/actionlint/blob/main/docs/install.md#download-script). ([#218](https://github.com/rhysd/actionlint/issues/218))
+
+[Changes][v1.6.19]
+
+
+<a id="v1.6.18"></a>
+## [v1.6.18](https://github.com/rhysd/actionlint/releases/tag/v1.6.18) - 2022-09-17
+
+- This release much enhances checks for local reusable workflow calls. Note that these checks are done for local reusable workflows (starting with `./`). ([#179](https://github.com/rhysd/actionlint/issues/179)).
+  - Detect missing required inputs/secrets and undefined inputs/secrets at `jobs.<job_id>.with` and `jobs.<job_id>.secrets`. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-inputs-and-secrets-in-workflow-call) for more details.
+    ```yaml
+    # .github/workflows/reusable.yml
+    on:
+      workflow_call:
+        inputs:
+          name:
+            type: string
+            required: true
+        secrets:
+          password:
+            required: true
+    ...
+
+    # .github/workflows/test.yml
+    ...
+
+    jobs:
+      missing-required:
+        uses: ./.github/workflows/reusable.yml
+        with:
+          # ERROR: Undefined input "user"
+          user: rhysd
+          # ERROR: Required input "name" is missing
+        secrets:
+          # ERROR: Undefined secret "credentials"
+          credentials: my-token
+          # ERROR: Required secret "password" is missing
+    ```
+  - Type check for reusable workflow inputs at `jobs.<job_id>.with`. Types are defined at `on.workflow_call.inputs.<name>.type` in reusable workflow. actionlint checks types of expressions in workflow calls. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-inputs-and-secrets-in-workflow-call) for more details.
+    ```yaml
+    # .github/workflows/reusable.yml
+    on:
+      workflow_call:
+        inputs:
+          id:
+            type: number
+          message:
+            type: string
+    ...
+
+    # .github/workflows/test.yml
+    ...
+
+    jobs:
+      type-checks:
+        uses: ./.github/workflows/reusable.yml
+        with:
+          # ERROR: Cannot assign string value to number input. format() returns string value
+          id: ${{ format('runner name is {0}', runner.name) }}
+          # ERROR: Cannot assign null to string input. If you want to pass string "null", use ${{ 'null' }}
+          message: null
+    ```
+  - Detect local reusable workflow which does not exist at `jobs.<job_id>.uses`. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-workflow-call-syntax) for more details.
+    ```yaml
+    jobs:
+      test:
+        # ERROR: This workflow file does not exist
+        with: ./.github/workflows/does-not-exist.yml
+    ```
+  - Check `needs.<job_id>.outputs.<output_id>` in downstream jobs of workflow call jobs. The outputs object is now typed strictly based on `on.workflow_call.outputs.<name>` in the called reusable workflow. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-outputs-of-workflow-call-in-downstream-jobs) for more details.
+    ```yaml
+    # .github/workflows/get-build-info.yml
+    on:
+      workflow_call:
+        outputs:
+          version:
+            value: ...
+            description: version of software
+    ...
+
+    # .github/workflows/test.yml
+    ...
+
+    jobs:
+      # This job's outputs object is typed as {version: string}
+      get_build_info:
+        uses: ./.github/workflows/get-build-info.yml
+      downstream:
+        needs: [get_build_info]
+        runs-on: ubuntu-latest
+        steps:
+          # OK. `version` is defined in the reusable workflow
+          - run: echo '${{ needs.get_build_info.outputs.version }}'
+          # ERROR: `tag` is not defined in the reusable workflow
+          - run: echo '${{ needs.get_build_info.outputs.tag }}'
+    ```
+- Add missing properties in contexts and improve types of some properties looking at [the official contexts document](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context).
+  - `github.action_status`
+  - `runner.debug`
+  - `services.<service_id>.ports`
+- Fix `on.workflow_call.inputs.<name>.description` and `on.workflow_call.secrets.<name>.description` were incorrectly mandatory. They are actually optional.
+- Report parse errors when parsing `action.yml` in local actions. They were ignored in previous versions.
+- Sort the order of properties in an object type displayed in error message. In previous versions, actionlint sometimes displayed `{a: true, b: string}`, or it displayed `{b: string, a: true}` for the same object type. This randomness was caused by random iteration of map values in Go.
+- Update popular actions data set to the latest.
+
+[Changes][v1.6.18]
+
+
+<a id="v1.6.17"></a>
+## [v1.6.17](https://github.com/rhysd/actionlint/releases/tag/v1.6.17) - 2022-08-28
+
+- Allow workflow calls are available in matrix jobs. See [the official announcement](https://github.blog/changelog/2022-08-22-github-actions-improvements-to-reusable-workflows-2/) for more details. ([#197](https://github.com/rhysd/actionlint/issues/197))
+  ```yaml
+  jobs:
+    ReusableMatrixJobForDeployment:
+      strategy:
+        matrix:
+          target: [dev, stage, prod]
+      uses: octocat/octo-repo/.github/workflows/deployment.yml@main
+      with:
+        target: ${{ matrix.target }}
+  ```
+- Allow nested workflow calls. See [the official announcement](https://github.blog/changelog/2022-08-22-github-actions-improvements-to-reusable-workflows-2/) for more details. ([#201](https://github.com/rhysd/actionlint/issues/201))
+  ```yaml
+  on: workflow_call
+
+  jobs:
+    call-another-reusable:
+      uses: path/to/another-reusable.yml@v1
+  ```
+- Fix job outputs should be passed to `needs.*.outputs` of only direct children. Until v1.6.16, they are passed to any downstream jobs. ([#151](https://github.com/rhysd/actionlint/issues/151))
+  ```yaml
+  jobs:
+    first:
+      runs-on: ubuntu-latest
+      outputs:
+        first: 'output from first job'
+      steps:
+        - run: echo 'first'
+
+    second:
+      needs: [first]
+      runs-on: ubuntu-latest
+      outputs:
+        second: 'output from second job'
+      steps:
+        - run: echo 'second'
+
+    third:
+      needs: [second]
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo '${{ toJSON(needs.second.outputs) }}'
+        # ERROR: `needs.first` does not exist, but v1.6.16 reported no error
+        - run: echo '${{ toJSON(needs.first.outputs) }}'
+  ```
+  When you need both `needs.first` and `needs.second`, add the both to `needs:`.
+  ```yaml
+    third:
+      needs: [first, second]
+      runs-on: ubuntu-latest
+      steps:
+        # OK
+        -  echo '${{ toJSON(needs.first.outputs) }}'
+  ```
+- Fix `}}` in string literals are detected as end marker of placeholder `${{ }}`. ([#205](https://github.com/rhysd/actionlint/issues/205))
+  ```yaml
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      strategy:
+        # This caused an incorrect error until v1.6.16
+        matrix: ${{ fromJSON('{"foo":{}}') }}
+  ```
+- Fix `working-directory:` should not be available with `uses:` in steps. `working-directory:` is only available with `run:`. ([#207](https://github.com/rhysd/actionlint/issues/207))
+  ```yaml
+  steps:
+    - uses: actions/checkout@v3
+      # ERROR: `working-directory:` is not available here
+      working-directory: ./foo
+  ```
+- The working directory for running `actionlint` command can be set via [`WorkingDir` field of `LinterOptions` struct](https://pkg.go.dev/github.com/rhysd/actionlint#LinterOptions). When it is empty, the return value from `os.Getwd` will be used.
+- Update popular actions data set. `actions/configure-pages@v2` was added.
+- Use Go 1.19 on CI by default. It is used to build release binaries.
+- Update dependencies (go-yaml/yaml v3.0.1).
+- Update playground dependencies (except for CodeMirror v6).
+
+[Changes][v1.6.17]
+
+
+<a id="v1.6.16"></a>
+## [v1.6.16](https://github.com/rhysd/actionlint/releases/tag/v1.6.16) - 2022-08-19
+
+- Allow an empty object at `permissions:`. You can use it to disable permissions for all of the available scopes. ([#170](https://github.com/rhysd/actionlint/issues/170), [#171](https://github.com/rhysd/actionlint/issues/171), thanks [@peaceiris](https://github.com/peaceiris))
+  ```yaml
+  permissions: {}
+  ```
+- Support `github.triggering_actor` context value. ([#190](https://github.com/rhysd/actionlint/issues/190), thanks [@stefreak](https://github.com/stefreak))
+- Rename `step-id` rule to `id` rule. Now the rule checks both job IDs and step IDs. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#id-naming-convention) for more details. ([#182](https://github.com/rhysd/actionlint/issues/182))
+  ```yaml
+  jobs:
+    # ERROR: '.' cannot be contained in ID
+    v1.2.3:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo 'job ID with version'
+          # ERROR: ID cannot contain spaces
+          id: echo for test
+    # ERROR: ID cannot start with numbers
+    2d-game:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo 'oops'
+  ```
+- Accessing `env` context in `jobs.<id>.if` is now reported as error. ([#155](https://github.com/rhysd/actionlint/issues/155))
+  ```yaml
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      # ERROR: `env` is not available here
+      if: ${{ env.DIST == 'arch' }}
+      steps:
+        - run: ...
+  ```
+- Fix actionlint wrongly typed some matrix value when the matrix is expanded with `${{ }}`. For example, `matrix.foo` in the following code is typed as `{x: string}`, but it should be `any` because it is initialized with the value from `fromJSON`. ([#145](https://github.com/rhysd/actionlint/issues/145))
+  ```yaml
+  strategy:
+    matrix:
+      foo: ${{ fromJSON(...) }}
+      exclude:
+        - foo:
+            x: y
+  ```
+- Fix incorrect type check when multiple runner labels are set to `runs-on:` via expanding `${{ }}` for selecting self-hosted runners. ([#164](https://github.com/rhysd/actionlint/issues/164))
+  ```yaml
+  jobs:
+    test:
+      strategy:
+        matrix:
+          include:
+            - labels: ["self-hosted", "macOS", "X64"]
+            - labels: ["self-hosted", "linux"]
+      # actionlint incorrectly reported type error here
+      runs-on: ${{ matrix.labels }}
+  ```
+- Fix usage of local actions (`uses: ./path/to/action`) was not checked when multiple workflow files were passed to `actionlint` command. ([#173](https://github.com/rhysd/actionlint/issues/173))
+- Allow `description:` is missing in `secrets:` of reusable workflow call definition since it is optional. ([#174](https://github.com/rhysd/actionlint/issues/174))
+- Fix type of property of `github.event.inputs` is string unlike `inputs` context. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#workflow-dispatch-event-validation) for more details. ([#181](https://github.com/rhysd/actionlint/issues/181))
+  ```yaml
+  on:
+    workflow_dispatch:
+      inputs:
+        is-valid:
+          # Type of `inputs.is-valid` is bool
+          # Type of `github.event.inputs.is-valid` is string
+          type: boolean
+  ```
+- Fix crash when a value is expanded with `${{ }}` at `continue-on-error:`. ([#193](https://github.com/rhysd/actionlint/issues/193))
+- Fix some error was caused by some other error. For example, the following code reported two errors. '" is not available for string literal' error caused another 'one placeholder should be included in boolean value string' error. This was caused because the `${{ x == "foo" }}` placeholder was not counted due to the previous type error.
+  ```yaml
+  if: ${{ x == "foo" }}
+  ```
+- Add support for [`merge_group` workflow trigger](https://github.blog/changelog/2022-08-18-merge-group-webhook-event-and-github-actions-workflow-trigger/).
+- Add official actions to manage GitHub Pages to popular actions data set.
+  - `actions/configure-pages@v1`
+  - `actions/deploy-pages@v1`
+  - `actions/upload-pages-artifact@v1`
+- Update popular actions data set to the latest. Several new major versions and new inputs of actions were added to it.
+- Describe how to install actionlint via [Chocolatey](https://chocolatey.org/), [scoop](https://scoop.sh/), and [AUR](https://aur.archlinux.org/) in [the installation document](https://github.com/rhysd/actionlint/blob/main/docs/install.md). ([#167](https://github.com/rhysd/actionlint/issues/167), [#168](https://github.com/rhysd/actionlint/issues/168), thanks [@sitiom](https://github.com/sitiom))
+- [VS Code extension for actionlint](https://marketplace.visualstudio.com/items?itemName=arahata.linter-actionlint) was created by [@arahatashun](https://github.com/arahatashun). See [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#vs-code) for more details.
+- Describe how to use [the Docker image](https://hub.docker.com/r/rhysd/actionlint) at step of GitHub Actions workflow. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions) for the details. ([#146](https://github.com/rhysd/actionlint/issues/146))
+  ```yaml
+  - uses: docker://rhysd/actionlint:latest
+    with:
+      args: -color
+  ```
+- Clarify the behavior if empty strings are set to some command line options in documents. `-shellcheck=` disables shellcheck integration and `-pyflakes=` disables pyflakes integration. ([#156](https://github.com/rhysd/actionlint/issues/156))
+- Update Go module dependencies.
+
+[Changes][v1.6.16]
+
+
+<a id="v1.6.15"></a>
+## [v1.6.15](https://github.com/rhysd/actionlint/releases/tag/v1.6.15) - 2022-06-28
+
+- Fix referring `env` context from `env:` at step level caused an error. `env:` at toplevel and job level cannot refer `env` context, but `env:` at step level can. ([#158](https://github.com/rhysd/actionlint/issues/158))
+  ```yaml
+  on: push
+
+  env:
+    # ERROR: 'env:' at toplevel cannot refer 'env' context
+    ERROR1: ${{ env.PATH }}
+
+  jobs:
+    my_job:
+      runs-on: ubuntu-latest
+      env:
+        # ERROR: 'env:' at job level cannot refer 'env' context
+        ERROR2: ${{ env.PATH }}
+      steps:
+        - run: echo "$THIS_IS_OK"
+          env:
+            # OK: 'env:' at step level CAN refer 'env' context
+            THIS_IS_OK: ${{ env.PATH }}
+  ```
+- [Docker image for linux/arm64](https://hub.docker.com/layers/rhysd/actionlint/1.6.15/images/sha256-f63ee59f1846abce86ca9de1d41a1fc22bc7148d14b788cb455a9594d83e73f7?context=repo) is now provided. It is useful for M1 Mac users. ([#159](https://github.com/rhysd/actionlint/issues/159), thanks [@politician](https://github.com/politician))
+- Fix [the download script](https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash) did not respect the version specified via the first argument. ([#162](https://github.com/rhysd/actionlint/issues/162), thanks [@mateiidavid](https://github.com/mateiidavid))
+
+[Changes][v1.6.15]
+
+
+<a id="v1.6.14"></a>
+## [v1.6.14](https://github.com/rhysd/actionlint/releases/tag/v1.6.14) - 2022-06-26
+
+- Some filters are exclusive in events at `on:`. Now actionlint checks the exclusive filters are used in the same event. `paths` and `paths-ignore`, `branches` and `branches-ignore`, `tags` and `tags-ignore` are exclusive. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#webhook-events-validation) for the details.
+  ```yaml
+  on:
+    push:
+      # ERROR: Both 'paths' and 'paths-ignore' filters cannot be used for the same event
+      paths: ...
+      paths-ignore: ...
+  ```
+- Some event filters are checked more strictly. Some filters are only available with specific events. Now actionlint checks the limitation. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#webhook-events-validation) for complete list of such filters.
+  ```yaml
+  on:
+    release:
+      # ERROR: 'tags' filter is only available for 'push' event
+      tags: v*.*.*
+  ```
+- Paths starting/ending with spaces are now reported as error.
+- Inputs of workflow which specify both `default` and `required` are now reported as error. When `required` is specified at input of workflow call, a caller of it must specify value of the input. So the default value will never be used. ([#154](https://github.com/rhysd/actionlint/issues/154), thanks [@sksat](https://github.com/sksat))
+  ```yaml
+  on:
+    workflow_call:
+      inputs:
+        my_input:
+          description: test
+          type: string
+          # ERROR: The default value 'aaa' will never be used
+          required: true
+          default: aaa
+  ```
+- Fix inputs of `workflow_dispatch` are set to `inputs` context as well as `github.event.inputs`. This was added by [the recent change of GitHub Actions](https://github.blog/changelog/2022-06-10-github-actions-inputs-unified-across-manual-and-reusable-workflows/). ([#152](https://github.com/rhysd/actionlint/issues/152))
+  ```yaml
+  on:
+    workflow_dispatch:
+      inputs:
+        my_input:
+          type: string
+          required: true
+  jobs:
+    my_job:
+      runs-on: ubuntu-latest
+      steps:
+        - run: echo ${{ github.event.inputs.my_input }}
+        # Now the input is also set to `inputs` context
+        - run: echo ${{ inputs.my_input }}
+  ```
+- Improve that `env` context is now not defined in values of `env:`, `id:` and `uses:`. actionlint now reports usage of `env` context in such places as type errors. ([#158](https://github.com/rhysd/actionlint/issues/158))
+  ```yaml
+  runs-on: ubuntu-latest
+  env:
+    FOO: aaa
+  steps:
+    # ERROR: 'env' context is not defined in values of 'env:', 'id:' and 'uses:'
+    - uses: test/${{ env.FOO }}@main
+      env:
+        BAR: ${{ env.FOO }}
+      id: foo-${{ env.FOO }}
+  ```
+- `actionlint` command gains `-stdin-filename` command line option. When it is specified, the file name is used on reading input from stdin instead of `<stdin>`. ([#157](https://github.com/rhysd/actionlint/issues/157), thanks [@arahatashun](https://github.com/arahatashun))
+  ```sh
+  # Error message shows foo.yml as file name where the error happened
+  ... | actionlint -stdin-filename foo.yml -
+  ```
+- [The download script](https://github.com/rhysd/actionlint/blob/main/docs/install.md#download-script) allows to specify a directory path to install `actionlint` executable with the second argument of the script. For example, the following command downloads `/path/to/bin/actionlint`:
+  ```sh
+  # Downloads the latest stable version at `/path/to/bin/actionlint`
+  bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) latest /path/to/bin
+  # Downloads actionlint v1.6.14 at `/path/to/bin/actionlint`
+  bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.6.14 /path/to/bin
+  ```
+- Update popular actions data set including `goreleaser-action@v3`, `setup-python@v4`, `aks-set-context@v3`.
+- Update Go dependencies including go-yaml/yaml v3.
+
+[Changes][v1.6.14]
+
+
+<a id="v1.6.13"></a>
+## [v1.6.13](https://github.com/rhysd/actionlint/releases/tag/v1.6.13) - 2022-05-18
+
+- [`secrets: inherit` in reusable workflow](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_callsecretsinherit) is now supported ([#138](https://github.com/rhysd/actionlint/issues/138))
+  ```yaml
+  on:
+    workflow_dispatch:
+
+  jobs:
+    pass-secrets-to-workflow:
+      uses: ./.github/workflows/called-workflow.yml
+      secrets: inherit
+  ```
+  This means that actionlint cannot know the workflow inherits secrets or not when checking a reusable workflow. To support `secrets: inherit` without giving up on checking `secrets` context, actionlint assumes the followings. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-types-of-inputs-and-secrets-in-reusable-workflow) for the details.
+  - when `secrets:` is omitted in a reusable workflow, the workflow inherits secrets from a caller
+  - when `secrets:` exists in a reusable workflow, the workflow inherits no other secret
+- [`macos-12` runner](https://github.blog/changelog/2022-04-25-github-actions-public-beta-of-macos-12-for-github-hosted-runners-is-now-available/) is now supported ([#134](https://github.com/rhysd/actionlint/issues/134), thanks [@shogo82148](https://github.com/shogo82148))
+- [`ubuntu-22.04` runner](https://github.blog/changelog/2022-05-10-github-actions-beta-of-ubuntu-22-04-for-github-hosted-runners-is-now-available/) is now supported ([#142](https://github.com/rhysd/actionlint/issues/142), thanks [@shogo82148](https://github.com/shogo82148))
+- `concurrency` is available on reusable workflow call ([#136](https://github.com/rhysd/actionlint/issues/136))
+  ```yaml
+  jobs:
+    checks:
+      concurrency:
+        group: ${{ github.ref }}-${{ github.workflow }}
+        cancel-in-progress: true
+      uses: ./path/to/workflow.yaml
+  ```
+- [pre-commit](https://pre-commit.com/) hook now uses a fixed version of actionlint. For example, the following configuration continues to use actionlint v1.6.13 even if v1.6.14 is released. ([#116](https://github.com/rhysd/actionlint/issues/116))
+  ```yaml
+  repos:
+    - repo: https://github.com/rhysd/actionlint
+      rev: v1.6.13
+      hooks:
+        - id: actionlint-docker
+  ```
+- Update popular actions data set including new versions of `docker/*`, `haskell/actions/setup`,  `actions/setup-go`, ... ([#140](https://github.com/rhysd/actionlint/issues/140), thanks [@bflad](https://github.com/bflad))
+- Update Go module dependencies
+
+
+[Changes][v1.6.13]
+
+
+<a id="v1.6.12"></a>
+## [v1.6.12](https://github.com/rhysd/actionlint/releases/tag/v1.6.12) - 2022-04-14
+
+- Fix `secrets.ACTIONS_RUNNER_DEBUG` and `secrets.ACTIONS_STEP_DEBUG` are not pre-defined in a reusable workflow. ([#130](https://github.com/rhysd/actionlint/issues/130))
+- Fix checking permissions is outdated. `pages` and `discussions` permissions were added and `metadata` permission was removed. ([#131](https://github.com/rhysd/actionlint/issues/131), thanks [@suzuki-shunsuke](https://github.com/suzuki-shunsuke))
+- Disable [SC2157](https://github.com/koalaman/shellcheck/wiki/SC2157) shellcheck rule to avoid a false positive due to [the replacement of `${{ }}`](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#shellcheck-integration-for-run) in script. For example, in the below script `-z ${{ env.FOO }}` was replaced with `-z ______________` and it caused 'always false due to literal strings' error. ([#113](https://github.com/rhysd/actionlint/issues/113))
+  ```yaml
+  - run: |
+      if [[ -z ${{ env.FOO }} ]]; then
+        echo "FOO is empty"
+      fi
+  ```
+- Add codecov-action@v3 to popular actions data set.
+
+[Changes][v1.6.12]
+
+
+<a id="v1.6.11"></a>
+## [v1.6.11](https://github.com/rhysd/actionlint/releases/tag/v1.6.11) - 2022-04-05
+
+- Fix crash on making [outputs in JSON format](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#format-error-messages) with `actionlint -format '{{json .}}'`. ([#128](https://github.com/rhysd/actionlint/issues/128))
+- Allow any outputs from `actions/github-script` action because it allows to set arbitrary outputs via calling `core.setOutput()` in JavaScript. ([#104](https://github.com/rhysd/actionlint/issues/104))
+  ```yaml
+  - id: test
+    uses: actions/github-script@v5
+    with:
+      script: |
+        core.setOutput('answer', 42);
+  - run: |
+      echo "The answer is ${{ steps.test.outputs.answer }}"
+  ```
+- Add support for Go 1.18. All released binaries were built with Go 1.18 compiler. The bottom supported version is Go 1.16 and it's not been changed.
+- Update popular actions data set (`actions/cache`, `code-ql-actions/*`, ...)
+- Update some Go module dependencies
+
+[Changes][v1.6.11]
+
+
+<a id="v1.6.10"></a>
+## [v1.6.10](https://github.com/rhysd/actionlint/releases/tag/v1.6.10) - 2022-03-11
+
+- Support outputs in reusable workflow call. See [the official document](https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-workflow) for the usage of the outputs syntax. ([#119](https://github.com/rhysd/actionlint/issues/119), [#121](https://github.com/rhysd/actionlint/issues/121))
+  Example of reusable workflow definition:
+  ```yaml
+  on:
+    workflow_call:
+      outputs:
+        some_output:
+          description: "Some awesome output"
+          value: 'result value of workflow call'
+  jobs:
+    job:
+      runs-on: ubuntu-latest
+      steps:
+        ...
+  ```
+  Example of reusable workflow call:
+  ```yaml
+  jobs:
+    job1:
+      uses: ./.github/workflows/some_workflow.yml
+    job2:
+      runs-on: ubuntu-latest
+      needs: job1
+      steps:
+        - run: echo ${{ needs.job1.outputs.some_output }}
+  ```
+- Support checking `jobs` context, which is only available in `on.workflow_call.outputs.<name>.value`. Outputs of jobs can be referred via the context. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-outputs-of-reusable-workflow) for more details.
+  ```yaml
+  on:
+    workflow_call:
+      outputs:
+        image-version:
+          description: "Docker image version"
+          # ERROR: 'imagetag' does not exist (typo of 'image_tag')
+          value: ${{ jobs.gen-image-version.outputs.imagetag }}
+  jobs:
+    gen-image-version:
+      runs-on: ubuntu-latest
+      outputs:
+        image_tag: "${{ steps.get_tag.outputs.tag }}"
+      steps:
+        - run: ./output_image_tag.sh
+          id: get_tag
+  ```
+- Add new major releases in `actions/*` actions including `actions/checkout@v3`, `actions/setup-go@v3`, `actions/setup-python@v3`, ...
+- Check job IDs. They must start with a letter or `_` and contain only alphanumeric characters, `-` or `_`. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#job-id-naming-convention) for more details. ([#80](https://github.com/rhysd/actionlint/issues/80))
+  ```yaml
+  on: push
+  jobs:
+    # ERROR: '.' cannot be contained in job ID
+    foo-v1.2.3:
+      runs-on: ubuntu-latest
+      steps:
+        - run: 'job ID with version'
+  ```
+- Fix `windows-latest` now means `windows-2022` runner. See [virtual-environments#4856](https://github.com/actions/virtual-environments/issues/4856) for the details. ([#120](https://github.com/rhysd/actionlint/issues/120))
+- Update [the playground](https://rhysd.github.io/actionlint/) dependencies to the latest.
+- Update Go module dependencies
+
+[Changes][v1.6.10]
+
+
+<a id="v1.6.9"></a>
+## [v1.6.9](https://github.com/rhysd/actionlint/releases/tag/v1.6.9) - 2022-02-24
+
+- Support [`runner.arch` context value](https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context). (thanks [@shogo82148](https://github.com/shogo82148), [#101](https://github.com/rhysd/actionlint/issues/101))
+  ```yaml
+  steps:
+    - run: ./do_something_64bit.sh
+      if: ${{ runner.arch == 'x64' }}
+  ```
+- Support [calling reusable workflows in local directories](https://docs.github.com/en/actions/using-workflows/reusing-workflows#calling-a-reusable-workflow). (thanks [@jsok](https://github.com/jsok), [#107](https://github.com/rhysd/actionlint/issues/107))
+  ```yaml
+  jobs:
+    call-workflow-in-local-repo:
+      uses: ./.github/workflows/useful_workflow.yml
+  ```
+- Add [a document](https://github.com/rhysd/actionlint/blob/main/docs/install.md#asdf) to install actionlint via [asdf](https://asdf-vm.com/) version manager. (thanks [@crazy-matt](https://github.com/crazy-matt), [#99](https://github.com/rhysd/actionlint/issues/99))
+- Fix using `secrets.GITHUB_TOKEN` caused a type error when some other secret is defined. (thanks [@mkj-is](https://github.com/mkj-is), [#106](https://github.com/rhysd/actionlint/issues/106))
+- Fix nil check is missing on parsing `uses:` step. (thanks [@shogo82148](https://github.com/shogo82148), [#102](https://github.com/rhysd/actionlint/issues/102))
+- Fix some documents including broken links. (thanks [@ohkinozomu](https://github.com/ohkinozomu), [#105](https://github.com/rhysd/actionlint/issues/105))
+- Update popular actions data set to the latest. More arguments are added to many actions. And a few actions had new major versions.
+- Update webhook payload data set to the latest. `requested_action` type was added to `check_run` hook. `requested` and `rerequested` types were removed from `check_suite` hook. `updated` type was removed from `project` hook.
+
+
+[Changes][v1.6.9]
+
+
+<a id="v1.6.8"></a>
+## [v1.6.8](https://github.com/rhysd/actionlint/releases/tag/v1.6.8) - 2021-11-15
+
+- [Untrusted inputs](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) detection can detect untrusted inputs in object filter syntax. For example, `github.event.*.body` filters `body` properties and it includes the untrusted input `github.event.comment.body`. actionlint detects such filters and causes an error. The error message includes all untrusted input names which are filtered by the object filter so that you can know what inputs are untrusted easily. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#untrusted-inputs) for more details.
+  Input example:
+  ```yaml
+  - name: Get comments
+    run: echo '${{ toJSON(github.event.*.body) }}'
+  ```
+  Error message:
+  ```
+  object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", ...
+  ```
+  Instead you should do:
+  ```yaml
+  - name: Get comments
+    run: echo "$JSON"
+    env:
+      JSON: {{ toJSON(github.event.*.body) }}
+  ```
+- Support [the new input type syntax for `workflow_dispatch` event](https://github.blog/changelog/2021-11-10-github-actions-input-types-for-manual-workflows/), which was introduced recently. You can declare types of inputs on triggering a workflow manually. actionlint does two things with this new syntax.
+  - actionlint checks the syntax. Unknown input types, invalid default values, missing options for 'choice' type.
+    ```yaml
+    inputs:
+      # Unknown input type
+      id:
+        type: number
+      # ERROR: No options for 'choice' input type
+      kind:
+        type: choice
+      name:
+        type: choice
+        options:
+          - Tama
+          - Mike
+        # ERROR: Default value is not in options
+        default: Chobi
+      verbose:
+        type: boolean
+        # ERROR: Boolean value must be 'true' or 'false'
+        default: yes
+    ```
+  - actionlint give a strict object type to `github.event.inputs` so that a type checker can check unknown input names and type mismatches on using the value.
+    ```yaml
+    on:
+      workflow_dispatch:
+        inputs:
+          message:
+            type: string
+          verbose:
+            type: boolean
+    # Type of `github.event.inputs` is {"message": string; "verbose": bool}
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        steps:
+          # ERROR: Undefined input
+          - run: echo "${{ github.event.inputs.massage }}"
+          # ERROR: Bool value is not available for object key
+          - run: echo "${{ env[github.event.inputs.verbose] }}"
+    ```
+  - See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-workflow-dispatch-events) for more details.
+- Add missing properties in `github` context. See [the contexts document](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context) to know the full list of properties.
+  - `github.ref_name` (thanks [@dihmandrake](https://github.com/dihmandrake), [#72](https://github.com/rhysd/actionlint/issues/72))
+  - `github.ref_protected`
+  - `github.ref_type`
+- Filtered array by object filters is typed more strictly.
+  ```
+  # `env` is a map object { string => string }
+  # Previously typed as array<any> now it is typed as array<string>
+  env.*
+  ```
+- Update Go module dependencies and playground dependencies.
+
+[Changes][v1.6.8]
+
+
+<a id="v1.6.7"></a>
+## [v1.6.7](https://github.com/rhysd/actionlint/releases/tag/v1.6.7) - 2021-11-08
+
+- Fix missing property `name` in `runner` context object (thanks [@ioanrogers](https://github.com/ioanrogers), [#67](https://github.com/rhysd/actionlint/issues/67)).
+- Fix a false positive on type checking at `x.*` object filtering syntax where the receiver is an object. actionlint previously only allowed arrays as receiver of object filtering ([#66](https://github.com/rhysd/actionlint/issues/66)).
+  ```ruby
+  fromJSON('{"a": "from a", "b": "from b"}').*
+  # => ["from a", "from b"]
+
+  fromJSON('{"a": {"x": "from a.x"}, "b": {"x": "from b.x"}}').*.x
+  # => ["from a.x", "from b.x"]
+  ```
+- Add [rust-cache](https://github.com/Swatinem/rust-cache) as new popular action.
+- Remove `bottle: unneeded` from Homebrew formula (thanks [@oppara](https://github.com/oppara), [#63](https://github.com/rhysd/actionlint/issues/63)).
+- Support `branch_protection_rule` webhook again.
+- Update popular actions data set to the latest ([#64](https://github.com/rhysd/actionlint/issues/64), [#70](https://github.com/rhysd/actionlint/issues/70)).
+
+[Changes][v1.6.7]
+
+
+<a id="v1.6.6"></a>
+## [v1.6.6](https://github.com/rhysd/actionlint/releases/tag/v1.6.6) - 2021-10-17
+
+- `inputs` and `secrets` objects are now typed looking at `workflow_call` event at `on:`. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-types-of-inputs-and-secrets-in-reusable-workflow) for more details.
+  - `inputs` object is typed with definitions at `on.workflow_call.inputs`. When the workflow is not callable, it is typed at `{}` (empty object) so any `inputs.*` access causes a type error.
+  - `secrets` object is typed with definitions at `on.workflow_call.secrets`.
+  ```yaml
+  on:
+    workflow_call:
+      # `inputs` object is typed {url: string; lucky_number: number}
+      inputs:
+        url:
+          description: 'your URL'
+          type: string
+        lucky_number:
+          description: 'your lucky number'
+          type: number
+      # `secrets` object is typed {user: string; credential: string}
+      secrets:
+        user:
+          description: 'your user name'
+        credential:
+          description: 'your credential'
+  jobs:
+    test:
+      runs-on: ubuntu-20.04
+      steps:
+        - name: Send data
+          # ERROR: uri is typo of url
+          run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
+          env:
+            # ERROR: credentials is typo of credential
+            TOKEN: ${{ secrets.credentials }}
+  ```
+- `id-token` is added to permissions (thanks [@cmmarslender](https://github.com/cmmarslender), [#62](https://github.com/rhysd/actionlint/issues/62)).
+- Report an error on nested workflow calls since it is [not allowed](https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#limitations).
+  ```yaml
+  on:
+    # This workflow is reusable
+    workflow_call:
+
+  jobs:
+    test:
+      # ERROR: Nested workflow call is not allowed
+      uses: owner/repo/path/to/workflow.yml@ref
+  ```
+- Parse `uses:` at reusable workflow call more strictly following `{owner}/{repo}/{path}@{ref}` format.
+- Popular actions data set was updated to the latest ([#61](https://github.com/rhysd/actionlint/issues/61)).
+- Dependencies of playground were updated to the latest (including eslint v8).
+
+[Changes][v1.6.6]
+
+
+<a id="v1.6.5"></a>
+## [v1.6.5](https://github.com/rhysd/actionlint/releases/tag/v1.6.5) - 2021-10-08
+
+- Support [reusable workflows](https://docs.github.com/en/actions/learn-github-actions/reusing-workflows) syntax which is now in beta. Only very basic syntax checks are supported at this time. Please see [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-reusable-workflows) to know checks for reusable workflow syntax.
+  - Example of `workflow_call` event
+    ```yaml
+    on:
+      workflow_call:
+        inputs:
+          name:
+            description: your name
+            type: string
+        secrets:
+          token:
+            required: true
+
+    jobs:
+      ...
+    ```
+  - Example of reusable workflow call with `uses:` at `job.<job_id>`
+    ```yaml
+    on: ...
+    jobs:
+      hello:
+        uses: owner/repo/path/to/workflow.yml@main
+        with:
+          name: Octocat
+        secrets:
+          token: ${{ secrets.token }}
+    ```
+- Support `github.run_attempt` property in `${{ }}` expression ([#57](https://github.com/rhysd/actionlint/issues/57)).
+- Add support for `windows-2022` runner which is now in [public beta](https://github.com/actions/virtual-environments/issues/3949).
+- Remove support for `ubuntu-16.04` runner which was [removed from GitHub Actions at the end of September](https://github.com/actions/virtual-environments/issues/3287).
+- Ignore [SC2154](https://github.com/koalaman/shellcheck/wiki/SC2154) shellcheck rule which can cause false positive ([#53](https://github.com/rhysd/actionlint/issues/53)).
+- Fix error position was not correct when required keys are not existing in job configuration.
+- Update popular actions data set. New major versions of github-script and lock-threads actions are supported ([#59](https://github.com/rhysd/actionlint/issues/59)).
+- Fix document (thanks [@fornwall](https://github.com/fornwall) at [#52](https://github.com/rhysd/actionlint/issues/52), thanks [@equal-l2](https://github.com/equal-l2) at [#56](https://github.com/rhysd/actionlint/issues/56)).
+  - Now actionlint is [an official package of Homebrew](https://formulae.brew.sh/formula/actionlint). Simply executing `brew install actionlint` can install actionlint.
+
+[Changes][v1.6.5]
+
+
+<a id="v1.6.4"></a>
+## [v1.6.4](https://github.com/rhysd/actionlint/releases/tag/v1.6.4) - 2021-09-21
+
+- Implement 'map' object types `{ string => T }`, where all properties of the object are typed as `T`. Since a key of object is always string, left hand side of `=>` is fixed to `string`. For example, `env` context only has string properties so it is typed as `{ string => string}`. Previously its properties were typed `any`.
+  ```yaml
+  # typed as string (previously any)
+  env.FOO
+
+  # typed as { id: string; network: string; ports: object; } (previously any)
+  job.services.redis
+  ```
+- `github.event.discussion.title` and `github.event.discussion.body` are now checked as untrusted inputs.
+- Update popular actions data set. ([#50](https://github.com/rhysd/actionlint/issues/50), [#51](https://github.com/rhysd/actionlint/issues/51))
+- Update webhooks payload data set. `branch_protection_rule` hook was dropped from the list due to [github/docs@179a6d3](https://github.com/github/docs/commit/179a6d334e92b9ade8626ef42a546dae66b49951). ([#50](https://github.com/rhysd/actionlint/issues/50), [#51](https://github.com/rhysd/actionlint/issues/51))
+
+[Changes][v1.6.4]
+
+
+<a id="v1.6.3"></a>
+## [v1.6.3](https://github.com/rhysd/actionlint/releases/tag/v1.6.3) - 2021-09-04
+
+- Improve guessing a type of matrix value. When a matrix contains numbers and strings, previously the type fell back to `any`. Now it is deduced as string.
+  ```yaml
+  strategy:
+    matrix:
+      # matrix.node is now deduced as `string` instead of `any`
+      node: [14, 'latest']
+  ```
+- Fix types of `||` and `&&` expressions. Previously they were typed as `bool` but it was not correct. Correct type is sum of types of both sides of the operator like TypeScript. For example, type of `'foo' || 'bar'` is a string, and `github.event && matrix` is an object.
+- actionlint no longer reports an error when a local action does not exist in the repository. It is a popular pattern that a local action directory is cloned while a workflow running. ([#25](https://github.com/rhysd/actionlint/issues/25), [#40](https://github.com/rhysd/actionlint/issues/40))
+- Disable [SC2050](https://github.com/koalaman/shellcheck/wiki/SC2050) shellcheck rule since it causes some false positive. ([#45](https://github.com/rhysd/actionlint/issues/45))
+- Fix `-version` did not work when running actionlint via [the Docker image](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#docker) ([#47](https://github.com/rhysd/actionlint/issues/47)).
+- Fix pre-commit hook file name. (thanks [@xsc27](https://github.com/xsc27), [#38](https://github.com/rhysd/actionlint/issues/38))
+- [New `branch_protection_rule` event](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#branch_protection_rule) is supported. ([#48](https://github.com/rhysd/actionlint/issues/48))
+- Update popular actions data set. ([#41](https://github.com/rhysd/actionlint/issues/41), [#48](https://github.com/rhysd/actionlint/issues/48))
+- Update Go library dependencies.
+- Update playground dependencies.
+
+[Changes][v1.6.3]
+
+
+<a id="v1.6.2"></a>
+## [v1.6.2](https://github.com/rhysd/actionlint/releases/tag/v1.6.2) - 2021-08-23
+
+- actionlint now checks evaluated values at `${{ }}` are not an object nor an array since they are not useful. See [the check document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-type-check-expression) for more details.
+```yaml
+## ERROR: This will always be replaced with `echo 'Object'`
+- run: echo '${{ runner }}'
+## OK: Serialize an object into JSON to check the content
+- run: echo '${{ toJSON(runner) }}'
+```
+- Add [pre-commit](https://pre-commit.com/) support. pre-commit is a framework for managing Git `pre-commit` hooks. See [the usage document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#pre-commit) for more details. (thanks [@xsc27](https://github.com/xsc27) for adding the integration at [#33](https://github.com/rhysd/actionlint/issues/33)) ([#23](https://github.com/rhysd/actionlint/issues/23))
+- Add [an official Docker image](https://hub.docker.com/repository/docker/rhysd/actionlint). The Docker image contains shellcheck and pyflakes as dependencies. Now actionlint can be run with `docker run` command easily. See [the usage document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#docker) for more details. (thanks [@xsc27](https://github.com/xsc27) for the help at [#34](https://github.com/rhysd/actionlint/issues/34))
+```sh
+docker run --rm -v $(pwd):/repo --workdir /repo rhysd/actionlint:latest -color
+```
+- Go 1.17 is now a default compiler to build actionlint. Built binaries are faster than before by 2~7% when the process is CPU-bound. Sizes of built binaries are about 2% smaller. Note that Go 1.16 continues to be supported.
+- `windows/arm64` target is added to released binaries thanks to Go 1.17.
+- Now any value can be converted into bool implicitly. Previously this was not permitted as actionlint provides stricter type check. However it is not useful that a condition like `if: github.event.foo` causes a type error.
+- Fix a prefix operator cannot be applied repeatedly like `!!42`.
+- Fix a potential crash when type checking on expanding an object with `${{ }}` like `matrix: ${{ fromJSON(env.FOO) }}`
+- Update popular actions data set ([#36](https://github.com/rhysd/actionlint/issues/36))
+
+[Changes][v1.6.2]
+
+
+<a id="v1.6.1"></a>
+## [v1.6.1](https://github.com/rhysd/actionlint/releases/tag/v1.6.1) - 2021-08-16
+
+- [Problem Matchers](https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md) is now officially supported by actionlint, which annotates errors from actionlint on GitHub as follows. The matcher definition is maintained at [`.github/actionlint-matcher.json`](https://github.com/rhysd/actionlint/blob/main/.github/actionlint-matcher.json) by [script](https://github.com/rhysd/actionlint/tree/main/scripts/generate-actionlint-matcher). For the usage, see [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#problem-matchers).
+
+<img src="https://github.com/rhysd/ss/blob/master/actionlint/problem-matcher.png?raw=true" alt="annotation by Problem Matchers" width="715" height="221"/>
+
+- `runner_label` rule now checks conflicts in labels at `runs-on`. For example, there is no runner which meats both `ubuntu-latest` and `windows-latest`. This kind of misconfiguration sometimes happen when a beginner misunderstands the usage of `runs-on:`. To run a job on each runners, `matrix:` should be used. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-runner-labels) for more information.
+
+```yaml
+on: push
+jobs:
+  test:
+    # These labels match to no runner
+    runs-on: [ubuntu-latest, windows-latest]
+    steps:
+      - run: echo ...
+```
+
+- Reduce memory footprint (around 16%) on starting `actionlint` command by removing unnecessary data from `PopularActions` global variable. This also slightly reduces binary size (about 3.7% at `playground/main.wasm`).
+- Fix accessing `steps.*` objects in job's `environment:` configuration caused a type error ([#30](https://github.com/rhysd/actionlint/issues/30)).
+- Fix checking that action's input names at `with:` were not in case insensitive ([#31](https://github.com/rhysd/actionlint/issues/31)).
+- Ignore outputs of [getsentry/paths-filter](https://github.com/getsentry/paths-filter). It is a fork of [dorny/paths-filter](https://github.com/dorny/paths-filter). actionlint cannot check the outputs statically because it sets outputs dynamically.
+- Add [Azure/functions-action](https://github.com/Azure/functions-action) to popular actions.
+- Update popular actions data set ([#29](https://github.com/rhysd/actionlint/issues/29)).
+
+[Changes][v1.6.1]
+
+
+<a id="v1.6.0"></a>
+## [v1.6.0](https://github.com/rhysd/actionlint/releases/tag/v1.6.0) - 2021-08-11
+
+- Check potentially untrusted inputs to prevent [a script injection vulnerability](https://securitylab.github.com/research/github-actions-untrusted-input/) at `run:` and `script` input of [actions/github-script](https://github.com/actions/github-script). See [the rule document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#untrusted-inputs) for more explanations and workflow example. (thanks [@azu](https://github.com/azu) for the feature request at [#19](https://github.com/rhysd/actionlint/issues/19))
+
+Incorrect code
+
+```yaml
+- run: echo '${{ github.event.pull_request.title }}'
+```
+
+should be replaced with
+
+```yaml
+- run: echo "issue ${TITLE}"
+  env:
+    TITLE: ${{github.event.issue.title}}
+```
+
+- Add `-format` option to `actionlint` command. It allows to flexibly format error messages as you like with [Go template syntax](https://pkg.go.dev/text/template). See [the usage document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#format) for more details. (thanks [@ybiquitous](https://github.com/ybiquitous) for the feature request at [#20](https://github.com/rhysd/actionlint/issues/20))
+
+Simple example to output error messages as JSON:
+
+```sh
+actionlint -format '{{json .}}'
+```
+
+More compliated example to output error messages as markdown:
+
+```sh
+actionlint -format '{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\n\n{{$.Message}}\n\n```\n{{$.Snippet}}\n```\n\n{{end}}'
+```
+
+- Documents are reorganized. Long `README.md` is separated into several document files ([#28](https://github.com/rhysd/actionlint/issues/28))
+  - [`README.md`](https://github.com/rhysd/actionlint/blob/main/README.md): Introduction, Quick start, Document links
+  - [`docs/checks.md`](https://github.com/rhysd/actionlint/tree/main/docs/checks.md): Full list of all checks done by actionlint with example inputs, outputs, and playground links
+  - [`docs/install.md`](https://github.com/rhysd/actionlint/tree/main/docs/install.md): Installation instruction
+  - [`docs/usage.md`](https://github.com/rhysd/actionlint/tree/main/docs/usage.md): Advanced usage of `actionlint` command, usage of playground, integration with [reviewdog](https://github.com/reviewdog/reviewdog), [Problem Matchers](https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md), [super-linter](https://github.com/github/super-linter)
+  - [`docs/config.md`](https://github.com/rhysd/actionlint/tree/main/docs/config.md): About configuration file
+  - [`doc/api.md`](https://github.com/rhysd/actionlint/tree/main/docs/api.md): Using actionlint as Go library
+  - [`doc/reference.md`](https://github.com/rhysd/actionlint/tree/main/docs/reference.md): Links to resources
+- Fix checking shell names was not case-insensitive, for example `PowerShell` was detected as invalid shell name
+- Update popular actions data set to the latest
+- Make lexer errors on checking `${{ }}` expressions more meaningful
+
+[Changes][v1.6.0]
+
+
+<a id="v1.5.3"></a>
+## [v1.5.3](https://github.com/rhysd/actionlint/releases/tag/v1.5.3) - 2021-08-04
+
+- Now actionlint allows to use any operators outside `${{ }}` on `if:` condition like `if: github.repository_owner == 'rhysd'` ([#22](https://github.com/rhysd/actionlint/issues/22)). [The official document](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idif) said that using any operator outside `${{ }}` was invalid even if it was on `if:` condition. However, [github/docs#8786](https://github.com/github/docs/pull/8786) clarified that the document was not correct.
+
+[Changes][v1.5.3]
+
+
+<a id="v1.5.2"></a>
+## [v1.5.2](https://github.com/rhysd/actionlint/releases/tag/v1.5.2) - 2021-08-02
+
+- Outputs of [dorny/paths-filter](https://github.com/dorny/paths-filter) are now not typed strictly because the action dynamically sets outputs which are not defined in its `action.yml`. actionlint cannot check such outputs statically ([#18](https://github.com/rhysd/actionlint/issues/18)).
+- [The table](https://github.com/rhysd/actionlint/blob/main/all_webhooks.go) for checking [Webhooks supported by GitHub Actions](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#webhook-events) is now generated from the official document automatically with [script](https://github.com/rhysd/actionlint/tree/main/scripts/generate-webhook-events). The table continues to be updated weekly by [the CI workflow](https://github.com/rhysd/actionlint/actions/workflows/generate.yaml).
+- Improve error messages while lexing expressions as follows.
+- Fix column numbers are off-by-one on some lexer errors.
+- Fix checking invalid numbers where some digit follows zero in a hex number (e.g. `0x01`) or an exponent part of number (e.g. `1e0123`).
+- Fix a parse error message when some tokens still remain after parsing finishes.
+- Refactor the expression lexer to lex an input incrementally. It slightly reduces memory consumption.
+
+Lex error until v1.5.1:
+
+```test.yaml:9:26: got unexpected character '+' while lexing expression, expecting '_', '\'', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' [expression]```
+
+Lex error from v1.5.2:
+
+```test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', '_' [expression]```
+
+[Changes][v1.5.2]
+
+
+<a id="v1.5.1"></a>
+## [v1.5.1](https://github.com/rhysd/actionlint/releases/tag/v1.5.1) - 2021-07-29
+
+- Improve checking the intervals of scheduled events ([#14](https://github.com/rhysd/actionlint/issues/14), [#15](https://github.com/rhysd/actionlint/issues/15)). Since GitHub Actions [limits the interval to once every 5 minutes](https://github.blog/changelog/2019-11-01-github-actions-scheduled-jobs-maximum-frequency-is-changing/), actionlint now reports an error when a workflow is configured to be run once per less than 5 minutes.
+- Skip checking inputs of [octokit/request-action](https://github.com/octokit/request-action) since it allows to specify arbitrary inputs though they are not defined in its `action.yml` ([#16](https://github.com/rhysd/actionlint/issues/16)).
+  - Outputs of the action are still be typed strictly. Only its inputs are not checked.
+- The help text of `actionlint` is now hosted online: https://rhysd.github.io/actionlint/usage.html
+- Add new fuzzing target for parsing glob patterns.
+
+[Changes][v1.5.1]
+
+
+<a id="v1.5.0"></a>
+## [v1.5.0](https://github.com/rhysd/actionlint/releases/tag/v1.5.0) - 2021-07-26
+
+- `action` rule now validates inputs of popular actions at `with:`. When a required input is not specified or an undefined input is specified, actionlint will report it.
+  - Popular actions are updated automatically once a week and the data set is embedded to executable directly. The check does not need any network request and does not affect performance of actionlint. Sources of the actions are listed [here](https://github.com/rhysd/actionlint/blob/main/scripts/generate-popular-actions/main.go#L51). If you have some request to support new action, please report it at [the issue form](https://github.com/rhysd/actionlint/issues/new).
+  - Please see [the document](https://github.com/rhysd/actionlint#check-popular-action-inputs) for example ([Playground](https://rhysd.github.io/actionlint#eJyFj0EKwjAQRfc9xV8I1UJbcJmVK+8xDYOpqUlwEkVq725apYgbV8PMe/Dne6cQkpiiOPtOVAFEljhP4Jqc1D4LqUsupnqgmS1IIgd5W0CNJCwKpGPvnbSatOHDbf/BwL2PRq0bYPmR9efXBdiMIwyJOfYDy7asqrZqBq9tucM0/TWXyF81UI5F0wbSlk4s67u5mMKFLL8A+h9EEw==)).
+- `expression` rule now types outputs of popular actions (type of `steps.{id}.outputs` object) more strictly.
+  - For example, `actions/cache@v2` sets `cache-hit` output. The outputs object is typed as `{ cache-hit: any }`. Previously it was typed as `any` which means no further type check was performed.
+  - Please see the second example of [the document](https://github.com/rhysd/actionlint#check-contextual-step-object) ([Playground](https://rhysd.github.io/actionlint#eJyNTksKwjAQ3fcUbyFUC0nBZVauvIakMZjY0gRnokjp3W3TUl26Gt53XugVYiJXFPfQkCoAtsTzBR6pJxEmQ2pSz0l0etayRGwjLS5AIJElBW3Yh55qo42zp+dxlQF/Vcjkxrw8O7UhoLVvhd0wwGlyZ99Z2pdVVVeyC6YtDxjHH3PUUxiyjtq0+mZpmzENVrDGhVyVN8r8V4bEMfGKhPP8bfw7dlliH1xHWso=)).
+- Outputs of local actions (their names start with `./`) are also typed more strictly as well as popular actions.
+- Metadata (`action.yml`) of local actions are now cached to avoid reading and parsing `action.yml` files repeatedly for the same action.
+- Add new rule `permissions` to check [permission scopes](https://docs.github.com/en/actions/reference/authentication-in-a-workflow#permissions-for-the-github_token) for default `secrets.GITHUB_TOKEN`. Please see [the document](https://github.com/rhysd/actionlint#permissions) for more details ([Playground](https://rhysd.github.io/actionlint/#eJxNjd0NwyAMhN89xS3AAmwDxBK0FCOMlfUDiVr16aTv/qR5dNNM1Hl8imqRph7nKJOJXhLVEzBZ51ZgWFMnq2TR2jRXw/Zu63/gBkDKnN7ftQethPF6GByOEOuDdXL/ldw+8eCUBZlrlQvntjLp)).
+- Structure of [`actionlint.Permissions`](https://pkg.go.dev/github.com/rhysd/actionlint#Permissions) struct was changed. A parser no longer checks values of `permissions:` configuration. The check is now done by `permissions` rule.
+
+[Changes][v1.5.0]
+
+
+<a id="v1.4.3"></a>
+## [v1.4.3](https://github.com/rhysd/actionlint/releases/tag/v1.4.3) - 2021-07-21
+
+- Support new Webhook events [`discussion` and `discussion_comment`](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion) ([#8](https://github.com/rhysd/actionlint/issues/8)).
+- Read file concurrently with limiting concurrency to number of CPUs. This improves performance when checking many files and disabling shellcheck/pyflakes integration.
+- Support Linux based on musl libc by [the download script](https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash) ([#5](https://github.com/rhysd/actionlint/issues/5)).
+- Reduce number of goroutines created while running shellcheck/pyflakes processes. This has small impact on memory usage when your workflows have many `run:` steps.
+- Reduce built binary size by splitting an external library which is only used for debugging into a separate command line tool.
+- Introduce several micro benchmark suites to track performance.
+- Enable code scanning for Go/TypeScript/JavaScript sources in actionlint repository.
+
+[Changes][v1.4.3]
+
+
+<a id="v1.4.2"></a>
+## [v1.4.2](https://github.com/rhysd/actionlint/releases/tag/v1.4.2) - 2021-07-16
+
+- Fix executables in the current directory may be used unexpectedly to run `shellcheck` or `pyflakes` on Windows. This behavior could be security vulnerability since an attacker might put malicious executables in shared directories. actionlint searched an executable with [`exec.LookPath`](https://pkg.go.dev/os/exec#LookPath), but it searched the current directory on Windows as [golang/go#43724](https://github.com/golang/go/issues/43724) pointed. Now actionlint uses [`execabs.LookPath`](https://pkg.go.dev/golang.org/x/sys/execabs#LookPath) instead, which does not have the issue. (ref: [sharkdp/bat#1724](https://github.com/sharkdp/bat/pull/1724))
+- Fix issue caused by running so many processes concurrently. Since checking workflows by actionlint is highly parallelized, checking many workflow files makes too many `shellcheck` processes and opens many files in parallel. This hit OS resources limitation (issue [#3](https://github.com/rhysd/actionlint/issues/3)). Now reading files is serialized and number of processes run concurrently is limited for fixing the issue. Note that checking workflows is still done in parallel so this fix does not affect actionlint's performance.
+- Ensure cleanup processes even if actionlint stops due to some fatal issue while visiting a workflow tree.
+- Improve fatal error message to know which workflow file caused the error.
+- [Playground](https://rhysd.github.io/actionlint/) improvements
+  - "Permalink" button was added to make permalink directly linked to the current workflow source code. The source code is embedded in hash of the URL.
+  - "Check" button and URL input form was added to check workflow files on https://github.com or https://gist.github.com easily. Visit a workflow file on GitHub, copy the URL, paste it to the input form and click the button. It instantly fetches the workflow file content and checks it with actionlint.
+  - `u=` URL parameter was added to specify GitHub or Gist URL like https://rhysd.github.io/actionlint/?u=https://github.com/rhysd/actionlint/blob/main/.github/workflows/ci.yaml
+
+[Changes][v1.4.2]
+
+
+<a id="v1.4.1"></a>
+## [v1.4.1](https://github.com/rhysd/actionlint/releases/tag/v1.4.1) - 2021-07-12
+
+- A pre-built executable for `darwin/arm64` (Apple M1) was added to CI ([#1](https://github.com/rhysd/actionlint/issues/1))
+  - Managing `actionlint` command with Homebrew on M1 Mac is now available. See [the instruction](https://github.com/rhysd/actionlint#homebrew-on-macos) for more details
+  - Since the author doesn't have M1 Mac and GitHub Actions does not support M1 Mac yet, the built binary is not tested
+- Pre-built executables are now built with Go 1.16 compiler (previously it was 1.15)
+- Fix error message is sometimes not in one line when the error message was caused by go-yaml/yaml parser
+- Fix playground does not work on Safari browsers on both iOS and Mac since they don't support `WebAssembly.instantiateStreaming()` yet
+- Make URLs in error messages clickable on playground
+- Code base of playground was migrated from JavaScript to Typescript along with improving error handlings
+
+[Changes][v1.4.1]
+
+
+<a id="v1.4.0"></a>
+## [v1.4.0](https://github.com/rhysd/actionlint/releases/tag/v1.4.0) - 2021-07-09
+
+- New rule to validate [glob pattern syntax](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet) to filter branches, tags and paths. For more details, see [documentation](https://github.com/rhysd/actionlint#check-glob-pattern).
+  - syntax errors like missing closing brackets for character range `[..]`
+  - invalid usage like `?` following `*`, invalid character range `[9-1]`, ...
+  - invalid character usage for Git ref names (branch name, tag name)
+    - ref name cannot start/end with `/`
+    - ref name cannot contain `[`, `:`, `\`, ...
+- Fix column of error position is off by one when the error is caused by quoted strings like `'...'` or `"..."`.
+- Add `--norc` option to `shellcheck` command to check shell scripts in `run:` in order not to be affected by any user configuration.
+- Improve some error messages
+- Explain playground in `man` manual
+
+[Changes][v1.4.0]
+
+
+<a id="v1.3.2"></a>
+## [v1.3.2](https://github.com/rhysd/actionlint/releases/tag/v1.3.2) - 2021-07-04
+
+- [actionlint playground](https://rhysd.github.io/actionlint) was implemented thanks to WebAssembly. actionlint is now available on browser without installing anything. The playground does not send user's workflow content to any remote server.
+- Some margins are added to code snippets in error message. See below examples. I believe it's easier to recognize code in bunch of error messages than before.
+- Line number is parsed from YAML syntax error. Since errors from [go-yaml/go](https://github.com/go-yaml/yaml) don't have position information, previously YAML syntax errors are reported at line:0, col:0. Now line number is parsed from error message and set correctly (if error message includes line number).
+- Code snippet is shown in error message even if column number of the error position is unknown.
+- Fix error message on detecting duplicate of step IDs.
+- Fix and improve validating arguments of `format()` calls.
+- All rule documents have links to actionlint playground with example code.
+- `man` manual covers usage of actionlint on CI services.
+
+Error message until v1.3.1:
+
+```
+test.yaml:4:13: invalid CRON format "0 */3 * *" in schedule event: Expected exactly 5 fields, found 4: 0 */3 * * [events]
+4|     - cron: '0 */3 * *'
+ |             ^~
+```
+
+Error message at v1.3.2:
+
+```
+test.yaml:4:13: invalid CRON format "0 */3 * *" in schedule event: Expected exactly 5 fields, found 4: 0 */3 * * [events]
+  |
+4 |     - cron: '0 */3 * *'
+  |             ^~
+```
+
+[Changes][v1.3.2]
+
+
+<a id="v1.3.1"></a>
+## [v1.3.1](https://github.com/rhysd/actionlint/releases/tag/v1.3.1) - 2021-06-30
+
+- Files are checked in parallel. This made actionlint around 1.3x faster with 3 workflow files in my environment
+- Manual for `man` command was added. `actionlint.1` is included in released archives. If you installed actionlint via Homebrew, the manual is also installed automatically
+- `-version` now reports how the binary was built (Go version, arch, os, ...)
+- Added [`Command`](https://pkg.go.dev/github.com/rhysd/actionlint#Command) struct to manage entire command lifecycle
+- Order of checked files is now stable. When all the workflows in the current repository are checked, the order is sorted by file names
+- Added fuzz target for rule checkers
+
+[Changes][v1.3.1]
+
+
+<a id="v1.3.0"></a>
+## [v1.3.0](https://github.com/rhysd/actionlint/releases/tag/v1.3.0) - 2021-06-26
+
+- `-version` now outputs how the executable was installed.
+- Fix errors output to stdout was not colorful on Windows.
+- Add new `-color` flag to force to enable colorful outputs. This is useful when running actionlint on GitHub Actions since scripts at `run:` don't enable colors.
+- `Linter.LintFiles` and `Linter.LintFile` methods take `project` parameter to explicitly specify what project the files belong to. Leaving it `nil` automatically detects projects from their file paths.
+- `LintOptions.NoColor` is replaced by `LintOptions.Color`.
+
+Example of `-version` output:
+
+```console
+$ brew install actionlint
+$ actionlint -version
+1.3.0
+downloaded from release page
+
+$ go install github.com/rhysd/actionlint/cmd/actionlint@v1.3.0
+go: downloading github.com/rhysd/actionlint v1.3.0
+$ actionlint -version
+v1.3.0
+built from source
+```
+
+Example of running actionlint on GitHub Actions forcing to enable color output:
+
+```yaml
+- name: Check workflow files
+  run: |
+    bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+    ./actionlint -color
+  shell: bash
+```
+
+[Changes][v1.3.0]
+
+
+<a id="v1.2.0"></a>
+## [v1.2.0](https://github.com/rhysd/actionlint/releases/tag/v1.2.0) - 2021-06-25
+
+- [pyflakes](https://github.com/PyCQA/pyflakes) integration was added. If `pyflakes` is installed on your system, actionlint checks Python scripts in `run:` (when `shell: python`) with it. See [the rule document](https://github.com/rhysd/actionlint#check-pyflakes-integ) for more details.
+- Error handling while running rule checkers was improved. When some internal error occurs while applying rules, actionlint stops correctly due to the error. Previously, such errors were only shown in debug logs and actionlint continued checks.
+- Fixed sanitizing `${{ }}` expressions in scripts before passing them to shellcheck or pyflakes. Previously expressions were not correctly sanitized when `}}` came before `${{`.
+
+[Changes][v1.2.0]
+
+
+<a id="v1.1.2"></a>
+## [v1.1.2](https://github.com/rhysd/actionlint/releases/tag/v1.1.2) - 2021-06-21
+
+- Run `shellcheck` command for scripts at `run:` in parallel. Since executing an external process is heavy and running shellcheck was bottleneck of actionlint, this brought better performance. In my environment, it was **more than 3x faster** than before.
+- Sort errors by their positions in the source file.
+
+[Changes][v1.1.2]
+
+
+<a id="v1.1.1"></a>
+## [v1.1.1](https://github.com/rhysd/actionlint/releases/tag/v1.1.1) - 2021-06-20
+
+- [`download-actionlint.yaml`](https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash) now sets `executable` output when it is run in GitHub Actions environment. Please see [instruction in 'Install' document](https://github.com/rhysd/actionlint#ci-services) for the usage.
+- Redundant type `ArrayDerefType` was removed. Instead, [`Deref` field](https://pkg.go.dev/github.com/rhysd/actionlint#ArrayType) is now provided in `ArrayType`.
+- Fix crash on broken YAML input.
+- `actionlint -version` returns correct version string even if the `actionlint` command was installed via `go install`.
+
+[Changes][v1.1.1]
+
+
+<a id="v1.1.0"></a>
+## [v1.1.0](https://github.com/rhysd/actionlint/releases/tag/v1.1.0) - 2021-06-19
+
+- Ignore [SC1091](https://github.com/koalaman/shellcheck/wiki/SC1091) and [SC2194](https://github.com/koalaman/shellcheck/wiki/SC2194) on running shellcheck. These are reported as false positives due to sanitization of `${{ ... }}`. See [the check doc](https://github.com/rhysd/actionlint#check-shellcheck-integ) to know the sanitization.
+- actionlint replaces `${{ }}` in `run:` scripts before passing them to shellcheck. v1.0.0 replaced `${{ }}` with whitespaces, but it caused syntax errors in some scripts (e.g. `if ${{ ... }}; then ...`). Instead, v1.1.0 replaces `${{ }}` with underscores. For example, `${{ matrix.os }}` is replaced with `________________`.
+- Add [`download-actionlint.bash`](https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash) script to download pre-built binaries easily on CI services. See [installation document](https://github.com/rhysd/actionlint#on-ci) for the usage.
+- Better error message on lexing `"` in `${{ }}` expression since double quote is usually misused for string delimiters
+- `-ignore` option can now be specified multiple times.
+- Fix `github.repositoryUrl` was not correctly resolved in `${{ }}` expression
+- Reports an error when `if:` condition does not use `${{ }}` but the expression contains any operators. [The official document](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsif) prohibits this explicitly to avoid conflicts with YAML syntax.
+- Clarify that the version of this repository is for `actionlint` CLI tool, not for library. It means that the APIs may have breaking changes on minor or patch version bumps.
+- Add more tests and refactor some code. Enumerating quoted items in error message is now done more efficiently and in deterministic order.
+
+[Changes][v1.1.0]
+
+
+<a id="v1.0.0"></a>
+## [v1.0.0](https://github.com/rhysd/actionlint/releases/tag/v1.0.0) - 2021-06-16
+
+First release :tada:
+
+See documentation for more details:
+
+- [Installation](https://github.com/rhysd/actionlint#install)
+- [Usage](https://github.com/rhysd/actionlint#usage)
+- [Checks done by actionlint](https://github.com/rhysd/actionlint#checks)
+
+[Changes][v1.0.0]
+
+
+[v1.7.12]: https://github.com/rhysd/actionlint/compare/v1.7.11...v1.7.12
+[v1.7.11]: https://github.com/rhysd/actionlint/compare/v1.7.10...v1.7.11
+[v1.7.10]: https://github.com/rhysd/actionlint/compare/v1.7.9...v1.7.10
+[v1.7.9]: https://github.com/rhysd/actionlint/compare/v1.7.8...v1.7.9
+[v1.7.8]: https://github.com/rhysd/actionlint/compare/v1.7.7...v1.7.8
+[v1.7.7]: https://github.com/rhysd/actionlint/compare/v1.7.6...v1.7.7
+[v1.7.6]: https://github.com/rhysd/actionlint/compare/v1.7.5...v1.7.6
+[v1.7.5]: https://github.com/rhysd/actionlint/compare/v1.7.4...v1.7.5
+[v1.7.4]: https://github.com/rhysd/actionlint/compare/v1.7.3...v1.7.4
+[v1.7.3]: https://github.com/rhysd/actionlint/compare/v1.7.2...v1.7.3
+[v1.7.2]: https://github.com/rhysd/actionlint/compare/v1.7.1...v1.7.2
+[v1.7.1]: https://github.com/rhysd/actionlint/compare/v1.7.0...v1.7.1
+[v1.7.0]: https://github.com/rhysd/actionlint/compare/v1.6.27...v1.7.0
+[v1.6.27]: https://github.com/rhysd/actionlint/compare/v1.6.26...v1.6.27
+[v1.6.26]: https://github.com/rhysd/actionlint/compare/v1.6.25...v1.6.26
+[v1.6.25]: https://github.com/rhysd/actionlint/compare/v1.6.24...v1.6.25
+[v1.6.24]: https://github.com/rhysd/actionlint/compare/v1.6.23...v1.6.24
+[v1.6.23]: https://github.com/rhysd/actionlint/compare/v1.6.22...v1.6.23
+[v1.6.22]: https://github.com/rhysd/actionlint/compare/v1.6.21...v1.6.22
+[v1.6.21]: https://github.com/rhysd/actionlint/compare/v1.6.20...v1.6.21
+[v1.6.20]: https://github.com/rhysd/actionlint/compare/v1.6.19...v1.6.20
+[v1.6.19]: https://github.com/rhysd/actionlint/compare/v1.6.18...v1.6.19
+[v1.6.18]: https://github.com/rhysd/actionlint/compare/v1.6.17...v1.6.18
+[v1.6.17]: https://github.com/rhysd/actionlint/compare/v1.6.16...v1.6.17
+[v1.6.16]: https://github.com/rhysd/actionlint/compare/v1.6.15...v1.6.16
+[v1.6.15]: https://github.com/rhysd/actionlint/compare/v1.6.14...v1.6.15
+[v1.6.14]: https://github.com/rhysd/actionlint/compare/v1.6.13...v1.6.14
+[v1.6.13]: https://github.com/rhysd/actionlint/compare/v1.6.12...v1.6.13
+[v1.6.12]: https://github.com/rhysd/actionlint/compare/v1.6.11...v1.6.12
+[v1.6.11]: https://github.com/rhysd/actionlint/compare/v1.6.10...v1.6.11
+[v1.6.10]: https://github.com/rhysd/actionlint/compare/v1.6.9...v1.6.10
+[v1.6.9]: https://github.com/rhysd/actionlint/compare/v1.6.8...v1.6.9
+[v1.6.8]: https://github.com/rhysd/actionlint/compare/v1.6.7...v1.6.8
+[v1.6.7]: https://github.com/rhysd/actionlint/compare/v1.6.6...v1.6.7
+[v1.6.6]: https://github.com/rhysd/actionlint/compare/v1.6.5...v1.6.6
+[v1.6.5]: https://github.com/rhysd/actionlint/compare/v1.6.4...v1.6.5
+[v1.6.4]: https://github.com/rhysd/actionlint/compare/v1.6.3...v1.6.4
+[v1.6.3]: https://github.com/rhysd/actionlint/compare/v1.6.2...v1.6.3
+[v1.6.2]: https://github.com/rhysd/actionlint/compare/v1.6.1...v1.6.2
+[v1.6.1]: https://github.com/rhysd/actionlint/compare/v1.6.0...v1.6.1
+[v1.6.0]: https://github.com/rhysd/actionlint/compare/v1.5.3...v1.6.0
+[v1.5.3]: https://github.com/rhysd/actionlint/compare/v1.5.2...v1.5.3
+[v1.5.2]: https://github.com/rhysd/actionlint/compare/v1.5.1...v1.5.2
+[v1.5.1]: https://github.com/rhysd/actionlint/compare/v1.5.0...v1.5.1
+[v1.5.0]: https://github.com/rhysd/actionlint/compare/v1.4.3...v1.5.0
+[v1.4.3]: https://github.com/rhysd/actionlint/compare/v1.4.2...v1.4.3
+[v1.4.2]: https://github.com/rhysd/actionlint/compare/v1.4.1...v1.4.2
+[v1.4.1]: https://github.com/rhysd/actionlint/compare/v1.4.0...v1.4.1
+[v1.4.0]: https://github.com/rhysd/actionlint/compare/v1.3.2...v1.4.0
+[v1.3.2]: https://github.com/rhysd/actionlint/compare/v1.3.1...v1.3.2
+[v1.3.1]: https://github.com/rhysd/actionlint/compare/v1.3.0...v1.3.1
+[v1.3.0]: https://github.com/rhysd/actionlint/compare/v1.2.0...v1.3.0
+[v1.2.0]: https://github.com/rhysd/actionlint/compare/v1.1.2...v1.2.0
+[v1.1.2]: https://github.com/rhysd/actionlint/compare/v1.1.1...v1.1.2
+[v1.1.1]: https://github.com/rhysd/actionlint/compare/v1.1.0...v1.1.1
+[v1.1.0]: https://github.com/rhysd/actionlint/compare/v1.0.0...v1.1.0
+[v1.0.0]: https://github.com/rhysd/actionlint/tree/v1.0.0
+
+<!-- Generated by https://github.com/rhysd/changelog-from-release v3.9.1 -->

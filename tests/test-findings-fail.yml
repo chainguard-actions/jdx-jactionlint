@@ -1,0 +1,45 @@
+name: Test findings fail the step
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a project with a broken workflow
+        run: |
+          set -e
+          rm -rf lint-bad
+          mkdir -p lint-bad/.github/workflows
+          cd lint-bad
+          git init -q .
+          cat > .github/workflows/ci.yml <<'EOF'
+          name: CI
+          on: push
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              needs: job-that-does-not-exist
+              steps:
+                - run: echo hello
+          EOF
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          working-directory: lint-bad
+          files: .github/workflows/ci.yml
+          online: "false"
+          annotations: "false"
+          color: "false"
+      - name: Assert the step failed
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected failure for a workflow with an undefined needs job"
+            exit 1
+          fi
+          echo "PASS"
