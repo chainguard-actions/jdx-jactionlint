@@ -1,0 +1,36 @@
+name: Test basic usage (clean file)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          files: tests/fixtures/workflows/clean.yml
+          online: "false"
+          min-severity: error
+          profile: correctness
+      - name: Assert executable output points to a working binary
+        env:
+          ACTUAL: ${{ steps.action.outputs.executable }}
+          SARIF: ${{ steps.action.outputs.sarif-file }}
+        run: |
+          echo "executable: $ACTUAL"
+          echo "sarif-file: $SARIF"
+          if [ -z "$ACTUAL" ] || [ ! -x "$ACTUAL" ]; then
+            echo "FAIL: executable output missing or not executable"
+            exit 1
+          fi
+          case "$ACTUAL" in
+            "$RUNNER_TEMP"/jactionlint/*) ;;
+            *) echo "FAIL: expected executable under \$RUNNER_TEMP/jactionlint"; exit 1 ;;
+          esac
+          "$ACTUAL" --version
+          if [ -n "$SARIF" ]; then
+            echo "FAIL: sarif-file should be empty without advanced-security"
+            exit 1
+          fi
+          echo "PASS"

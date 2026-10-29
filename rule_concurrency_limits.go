@@ -1,0 +1,353 @@
+package jactionlint
+
+import (
+	"bytes"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+)
+
+// RuleConcurrencyLimits is a rule to detect workflows without a concurrency limit. By default GitHub
+// runs every instance of a workflow at once even when a newer run supersedes the older ones, which
+// wastes runner minutes and can race on artifacts.
+// https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#concurrency
+type RuleConcurrencyLimits struct {
+	RuleBase
+	src  []byte
+	path string
+}
+
+// NewRuleConcurrencyLimits creates a new RuleConcurrencyLimits instance. The source is used to find
+// where to report a workflow without any concurrency setting. It can be empty.
+func NewRuleConcurrencyLimits(path string, src []byte) *RuleConcurrencyLimits {
+	return &RuleConcurrencyLimits{
+		RuleBase: RuleBase{
+			name: "concurrency-limits",
+			desc: "Checks that workflows limit concurrent runs with \"concurrency:\"",
+		},
+		src:  src,
+		path: path,
+	}
+}
+
+// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
+func (rule *RuleConcurrencyLimits) VisitWorkflowPre(n *Workflow) error {
+	if isCopilotSetupSteps(rule.path) {
+		return nil
+	}
+	if c := n.Concurrency; c != nil {
+		if onlyScheduledOrManual(n) {
+			// Nothing supersedes a timer or a manual run, so there is nothing to cancel. Only the option pedantic asks
+			// for the choice to be explicit: the bare group form queues runs like cancel-in-progress: false does
+			if c.Bare && rule.pedantic("concurrency-limits") && releaseReason(n) == "" {
+				rule.ReportID("concurrency-limits", c.Pos, "\"concurrency:\" is only a group name. nothing supersedes a run that a schedule or a person starts, so a new run should wait for the running one and not cancel it, which is what the group name does. write the mapping form with \"group:\" and an explicit \"cancel-in-progress: false\", so that the choice is visible")
+			}
+			return nil
+		}
+		// Whether runs are cancelled is a choice: serializing a release pipeline is as valid as cancelling
+		// the superseded runs of a test pipeline. Only the form which cannot cancel at all is reported.
+		if c.Bare && !onlyWorkflowCall(n) && releaseReason(n) == "" {
+			rule.ReportID("concurrency-limits", c.Pos, "\"concurrency:\" is only a group name, so it cannot cancel superseded runs. use the mapping form with \"group:\" and \"cancel-in-progress: true\"")
+		}
+		return nil
+	}
+	if onlyWorkflowCall(n) {
+		// The caller decides how many runs of a reusable workflow exist
+		return nil
+	}
+	scheduled := onlyScheduledOrManual(n)
+	if scheduled && !rule.pedantic("concurrency-limits") {
+		// Nothing supersedes a run of a timer or of a person who started it by hand. With the option pedantic the
+		// workflow is reported anyway, for runs that overlap, with advice that does not cancel anything
+		return nil
+	}
+	// Every job needs a limit, at the workflow or on the job itself. That includes the jobs which call a reusable
+	// workflow: a concurrency group in the called workflow can deadlock with the one of the caller, so the caller is
+	// where the limit belongs (zizmor#1619).
+	hasJob := false
+	limited := true
+	for _, j := range n.Jobs {
+		if j == nil {
+			continue
+		}
+		hasJob = true
+		if j.Concurrency == nil {
+			limited = false
+		}
+	}
+	if !hasJob || limited {
+		return nil
+	}
+
+	pos := &Pos{Line: 1, Col: 1}
+	if line, ok := onKeyLine(rule.src); ok {
+		pos = &Pos{Line: line, Col: 1}
+	} else if line, ok := firstKeyLine(rule.src); ok {
+		pos = &Pos{Line: line, Col: 1}
+	}
+	msg := "workflow has no \"concurrency:\", so every run of it executes at the same time even when a newer run supersedes the older ones. add a top-level \"concurrency:\" with a \"group:\" and \"cancel-in-progress: true\""
+	if why := releaseReason(n); why != "" {
+		// Cancelling a release or a deployment that is running leaves it half done (concurrency-cancels-release), so the
+		// group is there to make a new run wait for the running one
+		msg = "workflow has no \"concurrency:\", so every run of it executes at the same time even when a newer run is started while one is running (" + why + "). add a top-level \"concurrency:\" with a \"group:\" and \"cancel-in-progress: false\", so that a new run waits for the running release or deployment to finish instead of cancelling it. a newer run that is waiting replaces an older one that is waiting, so add \"queue: max\" when no release may be skipped"
+	} else if scheduled {
+		msg = scheduledMessage(n, rule.path)
+	} else if startedByPullRequest(n) {
+		msg += ". use a group per pull request such as \"" + callerAwareGroup(n, rule.path) + "\", so that a new push cancels only the older runs of the same pull request and not the runs of the others"
+	} else if callsReusableWorkflow(n) {
+		msg += ". use a group such as \"" + callerAwareGroup(n, rule.path) + "\""
+	}
+	if callsReusableWorkflow(n) {
+		msg += ". the workflow has jobs that call reusable workflows, and inside a called workflow \"github.workflow\" is the name of the caller, so a group that the caller and the called workflow both build from \"${{ github.workflow }}\" is the same one and the called workflow is cancelled at once. give the group of the caller its own part, such as \"-caller\", so that it never equals the group of a called workflow"
+	}
+	rule.ReportID("concurrency-limits", pos, msg)
+	fix, why := fixConcurrencyLimits(n)
+	rule.errs[len(rule.errs)-1].Fix = fix
+	rule.errs[len(rule.errs)-1].NoFix = why
+	return nil
+}
+
+// scheduledMessage is the advice for a workflow that only a schedule or a manual run starts and that has no
+// concurrency. A run of it is not superseded by a newer commit, so the advice names a group that keeps runs from
+// overlapping and does not suggest "cancel-in-progress: true": a cancelled scheduled run is not started again and
+// can leave its work half done. The fix is never offered, because the right group is the choice of the author.
+func scheduledMessage(w *Workflow, path string) string {
+	group := "${{ github.workflow }}"
+	if callsReusableWorkflow(w) {
+		group += callerGroupSuffix(w, path)
+	}
+	// The group of a workflow and the groups of its jobs are one namespace and at most one run holds a group, so a job
+	// in the group of its own workflow run waits for the run that contains it. Take a group no job uses.
+	used := map[string]bool{}
+	for _, j := range w.Jobs {
+		if j != nil && j.Concurrency != nil && j.Concurrency.Group != nil {
+			used[strings.Join(strings.Fields(strings.ReplaceAll(strings.ReplaceAll(j.Concurrency.Group.Value, "{{", "{{ "), "}}", " }}")), " ")] = true
+		}
+	}
+	for used[group] {
+		group += "-workflow"
+	}
+	msg := "workflow has no \"concurrency:\", so a run that a schedule or a person starts executes at the same time as a run that is still going. add a top-level \"concurrency:\" with a \"group:\" such as \"" + group + "\", so that a new run waits for the running one. do not add \"cancel-in-progress: true\" unless a run can be thrown away without losing work: nothing supersedes such a run, so a cancelled one is not started again. only one run can wait, and a newer run that is waiting replaces the older one that is waiting, so an occurrence can be skipped: add \"queue: max\" (up to 100 runs wait) when every occurrence must run"
+	for _, e := range w.On {
+		if d, ok := e.(*WorkflowDispatchEvent); ok && len(d.Inputs) > 0 {
+			msg += ". for a manual run that takes inputs add them to the group, so that runs with other inputs do not replace each other"
+			break
+		}
+	}
+	return msg
+}
+
+// releaseReason tells why the workflow releases or deploys something, or returns "" when it does not: it runs on the
+// release event or on pushed tags, or a job has an environment or publishes or deploys when the workflow is run by one
+// of its events. cancel-in-progress must not be recommended for such a workflow, see RuleConcurrencyCancelsRelease.
+func releaseReason(w *Workflow) string {
+	for _, e := range w.On {
+		switch ev := e.(type) {
+		case *WebhookEvent:
+			if ev.EventName() == "release" {
+				return "it runs for release events"
+			}
+			if ev.EventName() == "push" && tagFilterMatches(ev.Tags) {
+				return "it runs for pushed tags"
+			}
+		}
+	}
+	for _, e := range w.On {
+		event := e.EventName()
+		if event == "workflow_call" {
+			event = callerEvent // the caller decides what github.event_name is, so no condition on it is known
+		}
+		for _, id := range jobIDsInOrder(w) {
+			if j := w.Jobs[id]; j != nil {
+				if why := releaseSignal(j, scenario{event: event}); why != "" {
+					return why
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// pullRequestGroup is the group that the fix writes: the runs of one pull request cancel each other and nothing else.
+const pullRequestGroup = "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+
+// callerGroupMarker is what the group of a workflow that calls reusable workflows has in addition: inside a called
+// workflow github.workflow is the name of the caller, so the same expression in both would be one group, and the run of
+// the called workflow would cancel itself (or be cancelled by the caller) at once.
+const callerGroupMarker = "-caller"
+
+// callsReusableWorkflow reports whether a job of the workflow calls a reusable workflow with uses:.
+func callsReusableWorkflow(w *Workflow) bool {
+	for _, j := range w.Jobs {
+		if j != nil && j.WorkflowCall != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// callerAwareGroup is the group that the advice and the fix write. A workflow that calls reusable workflows gets a
+// group that cannot equal the one of a callee.
+//
+// A workflow that is itself called and calls others in turn sees the name of the outermost caller in
+// github.workflow, like its callees do, so the marker has the name of its own file to differ from both.
+func callerAwareGroup(w *Workflow, path string) string {
+	if callsReusableWorkflow(w) {
+		return "${{ github.workflow }}" + callerGroupSuffix(w, path) + "-${{ github.event.pull_request.number || github.ref }}"
+	}
+	return pullRequestGroup
+}
+
+// callerGroupSuffix is the part that a workflow which calls reusable workflows adds to "${{ github.workflow }}" in
+// its group, see callerAwareGroup.
+func callerGroupSuffix(w *Workflow, path string) string {
+	marker := callerGroupMarker
+	if isReusableWorkflow(w) {
+		if stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)); path != "" && stem != "" {
+			marker = "-" + stem + callerGroupMarker
+		}
+	}
+	return marker
+}
+
+// isReusableWorkflow reports whether the workflow can be called with workflow_call.
+func isReusableWorkflow(w *Workflow) bool {
+	for _, e := range w.On {
+		if _, ok := e.(*WorkflowCallEvent); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// startedByPullRequest reports whether the workflow runs for an event of a pull request.
+func startedByPullRequest(w *Workflow) bool {
+	for _, e := range w.On {
+		if slices.Contains(pullRequestEvents, e.EventName()) {
+			return true
+		}
+	}
+	return false
+}
+
+// anchorRe matches an anchor or an alias used as a value or a sequence item, and the merge key.
+var anchorRe = regexp.MustCompile(`(?m)^[^#\n]*(?:[:-][ \t]+[&*][A-Za-z0-9_-]+|<<[ \t]*:)`)
+
+// fixConcurrencyLimits makes the fix which adds a top-level "concurrency:" that cancels the superseded runs of the
+// same pull request. It is a safe fix, so it is offered only where cancelling cannot hurt:
+//
+//   - every trigger is an event of a pull request, so there is no push, tag, release or manual run to cancel;
+//   - no job releases or deploys anything (an environment, a publish or deploy command or action);
+//   - no job has a "concurrency:" of its own;
+//   - the file is written in a shape the edit understands: no anchors or aliases, and the "on:" entry is a block
+//     the parser and the helpers agree on.
+//
+// When there is no fix for a workflow of pull requests the second result says why. A workflow with another trigger is
+// advice only: both results are nil.
+func fixConcurrencyLimits(w *Workflow) (*Fix, *NoFix) {
+	shape := &NoFix{Code: NoFixUnsupportedShape, Reason: "the workflow is not written in a way the fix can edit exactly (anchors, aliases or an \"on:\" it does not understand), add the top-level \"concurrency:\" by hand"}
+	if len(w.On) == 0 {
+		return nil, shape
+	}
+	for _, e := range w.On {
+		if !slices.Contains(pullRequestEvents, e.EventName()) {
+			// Advice only: the fix is made for pull requests, and whether a push, a tag or a manual run may cancel the older
+			// ones is a decision the rule leaves to the person
+			return nil, nil
+		}
+	}
+	sc := releaseScenario{scenario: scenario{event: "pull_request"}}
+	for _, j := range w.Jobs {
+		if j == nil {
+			return nil, shape
+		}
+		if j.Concurrency != nil || releaseSignal(j, sc.scenario) != "" {
+			return nil, &NoFix{Code: NoFixNeedsJudgment, Reason: "a job has a \"concurrency:\" of its own or releases or deploys something, so cancelling superseded runs is a decision. choose the group and cancel-in-progress by hand"}
+		}
+	}
+	d := newSrcDoc(w.Source)
+	if d == nil || anchorRe.Match(w.Source) {
+		return nil, shape
+	}
+	if _, _, _, ok := d.topLevelKey("concurrency"); ok {
+		return nil, shape // the parser did not see it, so the shape is not understood
+	}
+	line, indent, inline, ok := d.topLevelKey("on")
+	if !ok {
+		line, indent, inline, ok = d.topLevelKey(`"on"`)
+	}
+	if !ok || strings.HasPrefix(inline, "&") || strings.HasPrefix(inline, "*") {
+		return nil, shape
+	}
+	end, ok := d.entryEnd(line, indent, inline)
+	if !ok {
+		return nil, shape
+	}
+	if (strings.HasPrefix(inline, "{") || strings.HasPrefix(inline, "[")) && end != line {
+		return nil, shape // a flow collection over several lines
+	}
+	pad := strings.Repeat(" ", indent)
+	unit := strings.Repeat(" ", d.indentUnit())
+	return &Fix{
+		Description: "Add concurrency that cancels superseded runs of the same pull request",
+		Edits: []TextEdit{d.insertAfterLine(end, "", // a blank line separates the block from "on:"
+			pad+"concurrency:",
+			pad+unit+"group: "+callerAwareGroup(w, ""),
+			pad+unit+"cancel-in-progress: true",
+		)},
+	}, nil
+}
+
+var onKeyRegexp = regexp.MustCompile(`^(?:on|"on"|'on')[ \t]*:`)
+
+// onKeyLine returns the 1-based line of the top-level "on:" key.
+func onKeyLine(src []byte) (int, bool) {
+	for i, l := range bytes.Split(src, []byte("\n")) {
+		if onKeyRegexp.Match(l) {
+			return i + 1, true
+		}
+	}
+	return 0, false
+}
+
+// onlyWorkflowCall reports whether the workflow can be started only by being called.
+func onlyWorkflowCall(n *Workflow) bool {
+	if len(n.On) == 0 {
+		return false
+	}
+	for _, e := range n.On {
+		if _, ok := e.(*WorkflowCallEvent); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func init() {
+	registerRules(
+		RuleInfo{ID: "concurrency-limits", Group: RuleGroupPolicy, Summary: "A workflow does not cancel superseded runs with concurrency:.", DefaultLevel: SeverityError, Profile: ProfileDefault, Fixable: true, DocsAnchor: "check-concurrency-limits", Options: []RuleOption{pedanticOption}},
+	)
+	registerRuleFactory("concurrency-limits", func(env *RuleEnv) []Rule {
+		if !env.config.RuleEnabled("concurrency-limits") {
+			return nil
+		}
+		return []Rule{NewRuleConcurrencyLimits(env.path, env.src)}
+	})
+}
+
+// onlyScheduledOrManual reports whether the workflow is started only by a schedule or by hand. A new commit does not
+// supersede such a run, so there is nothing for a concurrency group to cancel.
+func onlyScheduledOrManual(n *Workflow) bool {
+	if len(n.On) == 0 {
+		return false
+	}
+	for _, e := range n.On {
+		switch e.EventName() {
+		case "schedule", "workflow_dispatch":
+		default:
+			return false
+		}
+	}
+	return true
+}

@@ -1,0 +1,59 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Packages installed by name
+      - run: npm install lodash
+      - run: npm i --no-fund oxlint@1.55.0
+      - run: npm add left-pad
+      - run: sudo npm install -g typescript
+      - run: yarn add --dev eslint
+      - run: pnpm add -g pnpm@9
+      - run: bun add zod
+      - run: gem install rake
+      - run: gem install --no-document rails -v 7.1.0
+      - run: bundle add rails
+      - run: npm install $PACKAGE
+        env:
+          PACKAGE: left-pad
+      - run: |
+          set -e
+          cd frontend && npm install lodash
+      - run: if [ -f package.json ]; then npm install chalk; fi
+      - run: npm install ${{ github.sha }}
+        working-directory: web
+      # Installs from a manifest and its lock file
+      - run: npm install
+      - run: npm ci
+      - run: npm install --no-fund
+      - run: npm install .
+      - run: npm install ./vendor/pkg
+      - run: yarn install --frozen-lockfile
+      - run: yarn add
+      - run: pnpm install --frozen-lockfile
+      - run: bundle install
+      - run: gem install ./pkg.gem
+      - run: gem build pkg.gemspec
+      - run: echo "npm install lodash"
+      - run: npx tsc
+  windows:
+    runs-on: windows-2025
+    steps:
+      # The default shell of a Windows runner is pwsh. A line that is a plain command is read, one with the syntax of
+      # the shell is not
+      - run: npm install conventional-changelog-conventionalcommits
+      - run: |
+          npm install --no-save electron@22.3.27
+          if ($lastExitCode -ne 0) { exit $lastExitCode }
+          npm install -g typescript
+      - shell: cmd
+        run: npm i -D left-pad
+      - shell: pwsh
+        run: |
+          npm install --prefix ./assets
+          npm install ./pkg.tgz
+          npm install $env:PACKAGE
+          npm install lodash | Out-Null
+          npm ci
+          Write-Host "npm install lodash"

@@ -1,0 +1,45 @@
+name: Test executable input skips download
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: first
+        uses: .
+        with:
+          files: tests/fixtures/workflows/clean.yml
+          online: "false"
+          min-severity: error
+          profile: correctness
+      - name: Copy executable to a custom location
+        env:
+          EXE: ${{ steps.first.outputs.executable }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/custom-bin"
+          cp "$EXE" "$RUNNER_TEMP/custom-bin/jactionlint"
+          chmod +x "$RUNNER_TEMP/custom-bin/jactionlint"
+          echo "CUSTOM_EXE=$RUNNER_TEMP/custom-bin/jactionlint" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        with:
+          executable: ${{ env.CUSTOM_EXE }}
+          version: not-a-version
+          files: tests/fixtures/workflows/clean.yml
+          online: "false"
+          min-severity: error
+          profile: correctness
+          annotations: "false"
+          color: "false"
+      - name: Assert executable output equals the given executable
+        env:
+          ACTUAL: ${{ steps.action.outputs.executable }}
+        run: |
+          echo "actual: $ACTUAL"
+          echo "expected: $CUSTOM_EXE"
+          if [ "$ACTUAL" != "$CUSTOM_EXE" ]; then
+            echo "FAIL: executable output does not match the input"
+            exit 1
+          fi
+          echo "PASS"

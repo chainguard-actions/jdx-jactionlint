@@ -1,0 +1,15 @@
+name: Broken
+on:
+  push:
+    branches: [main]
+permissions: {}
+jobs:
+  hello:
+    name: Hello
+    timeout-minutes: 5
+    steps:
+      - name: Use an undefined context
+        run: echo "${{ undefined_context.value }}"
+      - name: Unknown key
+        not-a-real-step-key: true
+        run: echo "hello"

@@ -1,0 +1,258 @@
+package jactionlint
+
+import (
+	"strings"
+
+	"github.com/jdx/jactionlint/v2/internal/runscript"
+)
+
+// RuleAdhocPackages detects `run:` steps which install a package by name with a JavaScript package manager
+// (npm, yarn, pnpm, bun, aube) or a Ruby tool (gem, bundle add), outside of a manifest that produces a lock file.
+//
+// A package installed this way is usually not pinned, and even when it is, its dependencies are resolved anew on
+// every run. Adding the package to package.json or a Gemfile, committing the lock file and installing with
+// `npm ci` or `bundle install` makes the workflow reproducible.
+type RuleAdhocPackages struct {
+	RuleBase
+	runContext
+}
+
+// NewRuleAdhocPackages creates a new RuleAdhocPackages instance.
+func NewRuleAdhocPackages() *RuleAdhocPackages {
+	return &RuleAdhocPackages{
+		RuleBase: NewRuleBase("adhoc-packages", "Checks for packages installed by name outside of a lock file at \"run:\""),
+	}
+}
+
+// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
+func (rule *RuleAdhocPackages) VisitWorkflowPre(n *Workflow) error {
+	rule.enterWorkflow(n)
+	return nil
+}
+
+// VisitJobPre is callback when visiting Job node before visiting its children.
+func (rule *RuleAdhocPackages) VisitJobPre(n *Job) error {
+	rule.enterJob(n)
+	return nil
+}
+
+// VisitJobPost is callback when visiting Job node after visiting its children.
+func (rule *RuleAdhocPackages) VisitJobPost(n *Job) error {
+	rule.leaveJob()
+	return nil
+}
+
+// VisitStep is callback when visiting Step node.
+func (rule *RuleAdhocPackages) VisitStep(n *Step) error {
+	run, ok := n.Exec.(*ExecRun)
+	if !ok {
+		return nil
+	}
+	s, origin := rule.script(run)
+	if s == nil {
+		rule.checkLines(run)
+		return nil
+	}
+	for _, c := range s.Commands {
+		if tool, instead, ok := adhocInstall(c); ok {
+			start, end := commandRange(s, origin, c)
+			rule.reportInstall(c, tool, instead, start, end)
+		}
+	}
+	return nil
+}
+
+func (rule *RuleAdhocPackages) reportInstall(c *runscript.Command, tool, instead string, start, end *Pos) {
+	resolved := "its version and its dependencies are resolved anew on every run"
+	if in := c.Installs(); in != nil && registryPackagesPinned(in) {
+		// The version is fixed, but the packages it depends on are not
+		resolved = "its dependencies are resolved anew on every run, although its version is pinned"
+	}
+	rule.errorIDAt("adhoc-packages", start, "command "+quote(c.Name+" "+c.Verb())+" installs a package outside of a lock file: "+resolved+". add the package to "+tool+" and install with "+instead).endAt(end)
+}
+
+// pwshSyntax are the characters that make a line of a pwsh, powershell or cmd script more than a plain command with
+// words: variables, subexpressions, pipes, redirections, statement separators, escapes and blocks. Such a line is not
+// read.
+const pwshSyntax = "$`;|&<>(){}%^"
+
+// checkLines looks for installs in the scripts of the shells the analyzer does not parse (pwsh, powershell, cmd), line by
+// line. A line that is a plain command (`npm install typescript`, the same words in every shell) is read like a bash
+// command. A line with anything of the syntax of the shell, and the lines of a statement that go on over several lines, are
+// left alone: what they run is not known, so there is no finding.
+func (rule *RuleAdhocPackages) checkLines(run *ExecRun) {
+	switch rule.shellName(run) {
+	case "pwsh", "powershell", "cmd":
+	default:
+		return
+	}
+	origin := run.Run.scriptOrigin()
+	off := 0
+	for i, line := range strings.Split(run.Run.Value, "\n") {
+		lineStart := off
+		off += len(line) + 1
+		t := strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if t == "" || strings.ContainsAny(t, pwshSyntax) || strings.HasSuffix(t, ",") {
+			continue
+		}
+		lead := strings.Index(line, t)
+		s, err := runscript.Analyze(t, "bash")
+		if err != nil {
+			continue
+		}
+		for _, c := range s.Commands {
+			tool, instead, ok := adhocInstall(c)
+			if !ok {
+				continue
+			}
+			pos := func(offset int) *Pos {
+				if l, col, ok := run.Run.valueAt(lineStart + lead + offset); ok {
+					return &Pos{Line: l, Col: col}
+				}
+				p := origin.Map(i+1, lead+offset+1)
+				return &Pos{Line: p.Line, Col: p.Col}
+			}
+			rule.reportInstall(c, tool, instead, pos(c.Offset), pos(c.End))
+		}
+	}
+}
+
+// adhocInstall reports whether the command installs packages by name with a tool whose packages should come from
+// a manifest and a lock file. It returns the manifest to add the package to and the command to install from it.
+func adhocInstall(c *runscript.Command) (manifest, instead string, ok bool) {
+	switch c.Name {
+	case "bundle":
+		// `bundle add` changes the lock file of the run
+		if c.Sub(0) == "add" && len(c.Positional) > 1 {
+			return "the Gemfile and commit the Gemfile.lock", "`bundle install`", true
+		}
+		return "", "", false
+	case "gem":
+		in := c.Installs()
+		if in == nil || in.Verb != "install" || !hasRegistryPackage(in) {
+			return "", "", false
+		}
+		return "a Gemfile and commit the Gemfile.lock", "`bundle install`", true
+	}
+	if lernaAddsPackage(c) {
+		return "the package.json of the package and commit the lock file", "the frozen lock file install of the package manager (`npm ci`, `yarn install --immutable`, `pnpm install --frozen-lockfile`)", true
+	}
+	in := c.Installs()
+	if in == nil || in.Ecosystem != "npm" || in.Run || !hasRegistryPackage(in) {
+		return "", "", false
+	}
+	switch c.Tool {
+	case "npm":
+		return "package.json and commit the package-lock.json", "`npm ci`", true
+	case "yarn":
+		return "package.json and commit the yarn.lock", "`yarn install --immutable` (or `--frozen-lockfile` for Yarn 1)", true
+	case "pnpm":
+		return "package.json and commit the pnpm-lock.yaml", "`pnpm install --frozen-lockfile`", true
+	case "bun":
+		return "package.json and commit the lock file", "`bun ci`", true
+	case "aube":
+		// aube keeps the lock file the project has (pnpm-lock.yaml, bun.lock, ...) and writes aube-lock.yaml otherwise
+		return "package.json and commit the lock file", "`aube ci`", true
+	}
+	return "", "", false
+}
+
+// lernaValueFlags are the options of `lerna add` (and the filter options it shares with the other commands) that take
+// the next word as their value.
+var lernaValueFlags = map[string]bool{
+	"--scope": true, "--ignore": true, "--since": true, "--registry": true,
+	"--concurrency": true, "--log-level": true, "--loglevel": true, "--npm-client": true, "--cwd": true,
+}
+
+// lernaAddsPackage reports whether the command is `lerna add pkg`, also started through yarn, pnpm, npx or
+// `pnpm exec`, and the package comes from a registry. `lerna add PACKAGE [LOCATION...]` names one package and then
+// the places to add it to; options (`--scope web`, `--dev`) are neither. A package given as a path installs from the
+// checkout.
+func lernaAddsPackage(c *runscript.Command) bool {
+	switch c.Name {
+	case "lerna", "npx", "bunx", "pnpx", "yarn", "pnpm", "npm":
+	default:
+		return false // `echo lerna add pkg` installs nothing
+	}
+	argv := c.Args
+	if c.Name == "lerna" {
+		argv = append([]*runscript.Word{c.NameWord}, argv...)
+	}
+	for i, w := range argv {
+		if i > 1 {
+			break
+		}
+		if w.Dynamic() || w.Value != "lerna" {
+			continue
+		}
+		rest := argv[i+1:]
+		if len(rest) < 2 || rest[0].Dynamic() || rest[0].Value != "add" {
+			return false
+		}
+		for k := 1; k < len(rest); k++ {
+			a := rest[k]
+			if !a.Dynamic() && strings.HasPrefix(a.Value, "-") && a.Value != "-" {
+				if lernaValueFlags[a.Value] {
+					k++ // its value
+				}
+				continue
+			}
+			return !expandsList(a) && !strings.HasPrefix(a.Value, ".") && !strings.HasPrefix(a.Value, "/")
+		}
+		return false
+	}
+	return false
+}
+
+// hasRegistryPackage reports whether the install names a package from a registry, a repository or a URL. Local
+// paths do not count: `npm install .` and `npm install ./vendor/pkg` install from the checkout.
+func hasRegistryPackage(in *runscript.Install) bool {
+	for _, p := range in.Packages {
+		if !p.Local && p.Kind != runscript.KindPath && !expandsList(p.Word) {
+			return true
+		}
+	}
+	return false
+}
+
+// expandsList reports whether the word is a list of arguments the script builds, `"${filters[@]}"` or `"$@"`. What
+// is in it is not known: it holds the flags of the command as well as packages.
+func expandsList(w *runscript.Word) bool {
+	if w == nil {
+		return false
+	}
+	for _, m := range []string{"[@]}", "[*]}", "$@", "$*", "${@", "${*"} {
+		if strings.Contains(w.Raw, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// registryPackagesPinned reports whether every package of the install that comes from a registry is given an exact
+// version (`left-pad@1.3.0`, `gem install bundler -v 2.4.22`).
+func registryPackagesPinned(in *runscript.Install) bool {
+	n := 0
+	for _, p := range in.Packages {
+		if p.Local || p.Kind == runscript.KindPath {
+			continue
+		}
+		if !p.Pinned || p.Dynamic {
+			return false
+		}
+		n++
+	}
+	return n > 0
+}
+
+func init() {
+	registerRules(
+		RuleInfo{ID: "adhoc-packages", Group: RuleGroupSecurity, Summary: "A package is installed by name with npm, yarn, pnpm, bun, aube, gem or bundle add outside of a lock file.", DefaultLevel: SeverityError, Profile: ProfileDefault, DocsAnchor: "check-adhoc-packages"},
+	)
+	registerRuleFactory("adhoc-packages", func(env *RuleEnv) []Rule {
+		if !env.config.RuleEnabled("adhoc-packages") {
+			return nil
+		}
+		return []Rule{NewRuleAdhocPackages()}
+	})
+}
