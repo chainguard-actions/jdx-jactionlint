@@ -1,0 +1,43 @@
+# Bots that build a pull request when a maintainer comments on it, or that comment only
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  maintainers:
+    if: contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) && startsWith(github.event.comment.body, '/test')
+    runs-on: ubuntu-latest
+    steps:
+      # the commit that was commented on, not the branch of the pull request, which its author can still push to
+      - id: pr
+        uses: xt0rted/pull-request-comment-branch@v3
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+      - run: make test
+  permission-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: sushichop/action-repository-permission@v3
+        with:
+          required-permission: write
+      - id: pr
+        uses: xt0rted/pull-request-comment-branch@v3
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+      - run: make test
+  branch-for-the-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git checkout -b fix-${{ github.event.issue.number }}
+          make fix
+  only-reads-the-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh pr diff ${{ github.event.issue.number }} | wc -l
+        env:
+          GH_TOKEN: ${{ github.token }}

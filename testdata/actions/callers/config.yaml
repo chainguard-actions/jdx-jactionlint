@@ -1,0 +1,7 @@
+rules:
+  cache-poisoning: warn
+  bot-conditions: warn
+  unpinned-uses: off
+  template-injection:
+    level: warn
+    pedantic: true

@@ -1,0 +1,410 @@
+package jactionlint
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+	"sync"
+	"unicode/utf8"
+)
+
+type shellcheckError struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+	// EndLine and EndColumn are the end of the region; the column is the one just after it.
+	EndLine   int    `json:"endLine"`
+	EndColumn int    `json:"endColumn"`
+	Level     string `json:"level"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+}
+
+// RuleShellcheck is a rule to check shell scripts at 'run:' using shellcheck.
+// https://github.com/koalaman/shellcheck
+type RuleShellcheck struct {
+	RuleBase
+	cmd           *externalCommand
+	workflowShell string
+	jobShell      string
+	runnerShell   string
+	mu            sync.Mutex
+	// tool counts the scripts which were checked, or which were not because the command is unavailable.
+	tool *externalTool
+	// rcfile is the shellcheckrc to read instead of --norc, and extraArgs are the arguments added by the
+	// configuration (see ShellcheckConfig).
+	rcfile    string
+	extraArgs []string
+}
+
+func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
+	return &RuleShellcheck{
+		RuleBase: RuleBase{
+			name: "shellcheck",
+			desc: "Checks for shell script sources in \"run:\" using shellcheck",
+		},
+		cmd:           cmd,
+		workflowShell: "",
+		jobShell:      "",
+		runnerShell:   "",
+	}
+}
+
+// newRuleShellcheckUnavailable creates the rule for a run where shellcheck cannot be used (it is disabled or was not
+// found). It reports nothing. It counts the scripts that shellcheck would have checked, with the same rules for the
+// shell, so that the run can say how much was not checked.
+func newRuleShellcheckUnavailable(tool *externalTool) *RuleShellcheck {
+	r := newRuleShellcheck(nil)
+	r.tool = tool
+	return r
+}
+
+// NewRuleShellcheck creates new RuleShellcheck instance. The executable argument can be command
+// name or relative/absolute file path. When the given executable is not found in system, it returns
+// an error as 2nd return value.
+func NewRuleShellcheck(executable string, proc *concurrentProcess) (*RuleShellcheck, error) {
+	cmd, err := proc.newCommandRunner(executable, false)
+	if err != nil {
+		return nil, err
+	}
+	return newRuleShellcheck(cmd), nil
+}
+
+// VisitStep is callback when visiting Step node.
+func (rule *RuleShellcheck) VisitStep(n *Step) error {
+	run, ok := n.Exec.(*ExecRun)
+	if !ok || run.Run == nil {
+		return nil
+	}
+
+	rule.runShellcheck(run.Run, rule.getShellName(run), run.RunPos)
+	return nil
+}
+
+// VisitJobPre is callback when visiting Job node before visiting its children.
+func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
+	if n.Defaults != nil && n.Defaults.Run != nil && n.Defaults.Run.Shell != nil {
+		rule.jobShell = n.Defaults.Run.Shell.Value
+	}
+
+	if n.RunsOn != nil {
+		for _, label := range n.RunsOn.Labels {
+			l := strings.ToLower(label.Value)
+			// Default shell on Windows is PowerShell.
+			// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
+			if l == "windows" || strings.HasPrefix(l, "windows-") {
+				rule.runnerShell = "pwsh"
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// VisitJobPost is callback when visiting Job node after visiting its children.
+func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
+	rule.jobShell = ""
+	rule.runnerShell = ""
+	return nil
+}
+
+// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
+func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
+	if n.Defaults != nil && n.Defaults.Run != nil && n.Defaults.Run.Shell != nil {
+		rule.workflowShell = n.Defaults.Run.Shell.Value
+	}
+	return nil
+}
+
+// VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
+func (rule *RuleShellcheck) VisitWorkflowPost(n *Workflow) error {
+	rule.workflowShell = ""
+	if rule.cmd == nil {
+		return nil // shellcheck is unavailable, see newRuleShellcheckUnavailable
+	}
+	return rule.cmd.wait() // Wait until all processes running for this rule
+}
+
+func (rule *RuleShellcheck) getShellName(exec *ExecRun) string {
+	if exec.Shell != nil {
+		return exec.Shell.Value
+	}
+	if rule.jobShell != "" {
+		return rule.jobShell
+	}
+	if rule.workflowShell != "" {
+		return rule.workflowShell
+	}
+	if rule.runnerShell != "" {
+		return rule.runnerShell
+	}
+	// Note: Default shell on Windows is pwsh so this value is not always correct.
+	// Note: When bash is not found, GitHub-hosted runner fallbacks to sh.
+	return "bash"
+}
+
+// Replace ${{ ... }} with underscores like __________
+// Note: replacing with spaces sometimes causes syntax error. For example,
+//
+//	if ${{ contains(xs, s) }}; then
+//	  echo 'hello'
+//	fi
+func sanitizeExpressionsInScript(src string) string {
+	b := strings.Builder{}
+	for {
+		s := strings.Index(src, "${{")
+		if s == -1 {
+			if b.Len() == 0 {
+				return src
+			}
+			b.WriteString(src)
+			return b.String()
+		}
+
+		e := strings.Index(src[s:], "}}")
+		if e == -1 {
+			if b.Len() == 0 {
+				return src
+			}
+			b.WriteString(src)
+			return b.String()
+		}
+		e += s + 2 // 2 is offset for len("}}")
+
+		// Note: If ${{ ... }} includes newline, line and column reported by shellcheck will be
+		// shifted.
+		b.WriteString(src[:s])
+		for i := 0; i < e-s; i++ {
+			b.WriteByte('_')
+		}
+
+		src = src[e:]
+	}
+}
+
+// hasMultilineExpression returns true when some ${{ }} placeholder in the script contains a newline.
+func hasMultilineExpression(src string) bool {
+	for {
+		s := strings.Index(src, "${{")
+		if s == -1 {
+			return false
+		}
+		e := strings.Index(src[s:], "}}")
+		if e == -1 {
+			return false
+		}
+		if strings.Contains(src[s:s+e], "\n") {
+			return true
+		}
+		src = src[s+e+2:]
+	}
+}
+
+func (rule *RuleShellcheck) runShellcheck(srcAst *String, shell string, pos *Pos) {
+	var sh string
+	if shell == "bash" || shell == "sh" {
+		sh = shell
+	} else if strings.HasPrefix(shell, "bash ") {
+		sh = "bash"
+	} else if strings.HasPrefix(shell, "sh ") {
+		sh = "sh"
+	} else {
+		return // Skip checking this shell script since shellcheck doesn't support it
+	}
+	if rule.cmd == nil {
+		rule.tool.skip()
+		return
+	}
+	rule.tool.checked()
+
+	src := srcAst.Value
+	src = sanitizeExpressionsInScript(src)
+	rule.Debug("%s: Run shellcheck for %s script:\n%s", pos, sh, src)
+
+	// Reasons to exclude the rules:
+	//
+	// - SC1091: File not found. Scripts are for CI environment. Not suitable for checking this in current local
+	//           environment
+	// - SC2194: The word is constant. This sometimes happens at constants by replacing ${{ }} with underscores.
+	//           For example, `if ${{ matrix.foo }}; then ...` -> `if _________________; then ...`
+	// - SC2050: The expression is constant. This sometimes happens at `if` condition by replacing ${{ }} with
+	//           underscores (#45). For example, `if [ "${{ matrix.foo }}" = "x" ]` -> `if [ "_________________" = "x" ]`
+	// - SC2153: Same as SC2154.
+	// - SC2154: The var is referenced but not assigned. Script at `run:` can refer variables defined in `env:` section
+	//           so this rule can cause false positives (#53).
+	// - SC2157: Argument to -z is always false due to literal strings. When the argument of -z is replaced from ${{ }},
+	//           this can happen. For example, `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
+	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
+	//           e.g. `for foo in ${{ inputs.foo }}; do`
+	args := rule.shellcheckArgs(sh)
+	rule.Debug("%s: Running %s command with %s", pos, rule.cmd.exe, args)
+
+	// Use same options to run shell process described at document
+	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
+	setup := "set -e"
+	if sh == "bash" {
+		setup = "set -eo pipefail"
+	}
+	script := fmt.Sprintf("%s\n%s\n", setup, src)
+
+	mapLines := srcAst.Literal && srcAst.Pos != nil && !hasMultilineExpression(srcAst.Value)
+
+	rule.cmd.run(args, script, func(stdout []byte, err error) error {
+		if err != nil {
+			rule.Debug("Command %s %s failed: %v", rule.cmd.exe, args, err)
+			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", rule.cmd.exe, strings.Join(args, " "), pos, err)
+		}
+
+		errs := []shellcheckError{}
+		if err := json.Unmarshal(stdout, &errs); err != nil {
+			return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
+		}
+		if len(errs) == 0 {
+			return nil
+		}
+
+		// Synchronize rule.Errorf calls
+		rule.mu.Lock()
+		defer rule.mu.Unlock()
+		// It's better to show source location in the script as position of error, but it's not
+		// possible easily. YAML has multiple block styles with '|', '>', '|+', '>+', '|-', '>-'. Some
+		// of them remove indentation and/or blank lines. So restoring source position in block string
+		// is not possible. Sourcemap is necessary to do it.
+		// Instead, jactionlint shows position of 'run:' as position of error. And separately show
+		// location in script which is reported by shellcheck in error message.
+		for _, err := range errs {
+			// Consider the first line is setup for running shell which was implicitly added for better check
+			line := err.Line - 1
+			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
+
+			// Optimistically map the line in the script to the line in the source. This is only
+			// reliable for literal block scalars ('|', '|-', '|+') where lines are preserved as-is, and
+			// when no ${{ }} spans multiple lines (sanitizing replaces newlines in them). The column is not
+			// restorable because the indentation is stripped by the YAML parser, so the column of 'run:'
+			// is used.
+			errorLocation := *pos
+			var end *Pos
+			if start, e, ok := shellcheckRegion(srcAst, src, err); ok {
+				errorLocation, end = *start, e
+			} else if mapLines && line >= 1 {
+				errorLocation.Line = srcAst.Pos.Line + line
+			}
+			rule.ReportIDf("shellcheck", &errorLocation, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+			if end != nil {
+				rule.errs[len(rule.errs)-1].endAt(end)
+			}
+		}
+
+		return nil
+	})
+}
+
+// shellcheckArgs returns the arguments of one call of shellcheck for a script of the shell.
+func (rule *RuleShellcheck) shellcheckArgs(sh string) []string {
+	rc := "--norc"
+	if rule.rcfile != "" {
+		rc = "--rcfile=" + rule.rcfile
+	}
+	args := []string{rc, "-f", "json", "-x", "--shell", sh, "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043"}
+	args = append(args, rule.extraArgs...)
+	return append(args, "-")
+}
+
+// shellcheckRegion maps the region which shellcheck reports to the file. The line and the column of
+// shellcheck are in the script it was given: the setup line and then the sanitized text of the string
+// (which is as long as the string, byte for byte), so the region is found in the text and then looked up
+// in the file.
+func shellcheckRegion(str *String, sanitized string, e shellcheckError) (start, end *Pos, ok bool) {
+	if str == nil || str.src == nil || e.Line < 2 {
+		return nil, nil, false
+	}
+	so, ok := shellcheckOffset(sanitized, e.Line-1, e.Column)
+	if !ok {
+		return nil, nil, false
+	}
+	l, c, ok := str.valueAt(so)
+	if !ok {
+		return nil, nil, false
+	}
+	start = &Pos{Line: l, Col: c}
+	eo := so
+	if e.EndLine >= 2 && (e.EndLine > e.Line || e.EndColumn > e.Column) {
+		if o, ok := shellcheckOffset(sanitized, e.EndLine-1, e.EndColumn); ok {
+			eo = o
+		}
+	}
+	if eo <= so && so < len(sanitized) && sanitized[so] != '\n' {
+		_, w := utf8.DecodeRuneInString(sanitized[so:])
+		eo = so + w // a region is at least one character
+	}
+	l, c, ok = str.valueAt(eo)
+	if !ok {
+		return start, nil, true
+	}
+	return start, &Pos{Line: l, Col: c}, true
+}
+
+// shellcheckOffset returns the byte offset in the text of the 1-based line and column of shellcheck. Its
+// columns count the characters of a line, and a tab moves to the next multiple of 8 (plus one).
+func shellcheckOffset(text string, line, col int) (int, bool) {
+	off := 0
+	for l := 1; l < line; l++ {
+		i := strings.IndexByte(text[off:], '\n')
+		if i < 0 {
+			return 0, false
+		}
+		off += i + 1
+	}
+	c := 1
+	for off < len(text) && text[off] != '\n' {
+		if c >= col {
+			break
+		}
+		r, w := utf8.DecodeRuneInString(text[off:])
+		if r == '\t' {
+			c += 8 - (c-1)%8
+		} else {
+			c++
+		}
+		off += w
+	}
+	return off, true
+}
+
+func init() {
+	registerRules(
+		RuleInfo{ID: "shellcheck", Group: RuleGroupCorrectness, Summary: "shellcheck reported an issue in a shell script.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "check-shellcheck-integ"},
+	)
+	registerRuleFactory("shellcheck", func(env *RuleEnv) []Rule {
+		t := env.tools.tool("shellcheck")
+		if env.shellcheck == "" {
+			env.Skip("shellcheck command name was empty")
+			t.disabled()
+			env.observe(newRuleShellcheckUnavailable(t))
+			return nil
+		}
+		r, err := NewRuleShellcheck(env.shellcheck, env.proc)
+		if err != nil {
+			env.Skip(err.Error())
+			t.missing()
+			env.observe(newRuleShellcheckUnavailable(t))
+			return nil
+		}
+		t.found()
+		r.tool = t
+		root := ""
+		if env.project != nil {
+			root = env.project.root
+		}
+		rc, err := shellcheckRCFile(env.shellcheckRCFile, env.cwd, env.config, root)
+		if err != nil {
+			env.err = err
+			return nil
+		}
+		r.rcfile = rc
+		if env.config != nil {
+			r.extraArgs = env.config.Shellcheck.extraArgs()
+		}
+		return []Rule{r}
+	})
+}

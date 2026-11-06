@@ -1,0 +1,846 @@
+package jactionlint
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// BrandingColors is a set of colors allowed at branding.color in action.yaml.
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor
+var BrandingColors = map[string]struct{}{
+	"white":     {},
+	"black":     {},
+	"yellow":    {},
+	"blue":      {},
+	"green":     {},
+	"orange":    {},
+	"red":       {},
+	"purple":    {},
+	"gray-dark": {},
+}
+
+// BrandingIcons is a set of icon names allowed at branding.icon in action.yaml.
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon
+var BrandingIcons = map[string]struct{}{
+	"activity":           {},
+	"airplay":            {},
+	"alert-circle":       {},
+	"alert-octagon":      {},
+	"alert-triangle":     {},
+	"align-center":       {},
+	"align-justify":      {},
+	"align-left":         {},
+	"align-right":        {},
+	"anchor":             {},
+	"aperture":           {},
+	"archive":            {},
+	"arrow-down-circle":  {},
+	"arrow-down-left":    {},
+	"arrow-down-right":   {},
+	"arrow-down":         {},
+	"arrow-left-circle":  {},
+	"arrow-left":         {},
+	"arrow-right-circle": {},
+	"arrow-right":        {},
+	"arrow-up-circle":    {},
+	"arrow-up-left":      {},
+	"arrow-up-right":     {},
+	"arrow-up":           {},
+	"at-sign":            {},
+	"award":              {},
+	"bar-chart-2":        {},
+	"bar-chart":          {},
+	"battery-charging":   {},
+	"battery":            {},
+	"bell-off":           {},
+	"bell":               {},
+	"bluetooth":          {},
+	"bold":               {},
+	"book-open":          {},
+	"book":               {},
+	"bookmark":           {},
+	"box":                {},
+	"briefcase":          {},
+	"calendar":           {},
+	"camera-off":         {},
+	"camera":             {},
+	"cast":               {},
+	"check-circle":       {},
+	"check-square":       {},
+	"check":              {},
+	"chevron-down":       {},
+	"chevron-left":       {},
+	"chevron-right":      {},
+	"chevron-up":         {},
+	"chevrons-down":      {},
+	"chevrons-left":      {},
+	"chevrons-right":     {},
+	"chevrons-up":        {},
+	"circle":             {},
+	"clipboard":          {},
+	"clock":              {},
+	"cloud-drizzle":      {},
+	"cloud-lightning":    {},
+	"cloud-off":          {},
+	"cloud-rain":         {},
+	"cloud-snow":         {},
+	"cloud":              {},
+	"code":               {},
+	"command":            {},
+	"compass":            {},
+	"copy":               {},
+	"corner-down-left":   {},
+	"corner-down-right":  {},
+	"corner-left-down":   {},
+	"corner-left-up":     {},
+	"corner-right-down":  {},
+	"corner-right-up":    {},
+	"corner-up-left":     {},
+	"corner-up-right":    {},
+	"cpu":                {},
+	"credit-card":        {},
+	"crop":               {},
+	"crosshair":          {},
+	"database":           {},
+	"delete":             {},
+	"disc":               {},
+	"dollar-sign":        {},
+	"download-cloud":     {},
+	"download":           {},
+	"droplet":            {},
+	"edit-2":             {},
+	"edit-3":             {},
+	"edit":               {},
+	"external-link":      {},
+	"eye-off":            {},
+	"eye":                {},
+	"fast-forward":       {},
+	"feather":            {},
+	"file-minus":         {},
+	"file-plus":          {},
+	"file-text":          {},
+	"file":               {},
+	"film":               {},
+	"filter":             {},
+	"flag":               {},
+	"folder-minus":       {},
+	"folder-plus":        {},
+	"folder":             {},
+	"gift":               {},
+	"git-branch":         {},
+	"git-commit":         {},
+	"git-merge":          {},
+	"git-pull-request":   {},
+	"globe":              {},
+	"grid":               {},
+	"hard-drive":         {},
+	"hash":               {},
+	"headphones":         {},
+	"heart":              {},
+	"help-circle":        {},
+	"home":               {},
+	"image":              {},
+	"inbox":              {},
+	"info":               {},
+	"italic":             {},
+	"layers":             {},
+	"layout":             {},
+	"life-buoy":          {},
+	"link-2":             {},
+	"link":               {},
+	"list":               {},
+	"loader":             {},
+	"lock":               {},
+	"log-in":             {},
+	"log-out":            {},
+	"mail":               {},
+	"map-pin":            {},
+	"map":                {},
+	"maximize-2":         {},
+	"maximize":           {},
+	"menu":               {},
+	"message-circle":     {},
+	"message-square":     {},
+	"mic-off":            {},
+	"mic":                {},
+	"minimize-2":         {},
+	"minimize":           {},
+	"minus-circle":       {},
+	"minus-square":       {},
+	"minus":              {},
+	"monitor":            {},
+	"moon":               {},
+	"more-horizontal":    {},
+	"more-vertical":      {},
+	"move":               {},
+	"music":              {},
+	"navigation-2":       {},
+	"navigation":         {},
+	"octagon":            {},
+	"package":            {},
+	"paperclip":          {},
+	"pause-circle":       {},
+	"pause":              {},
+	"percent":            {},
+	"phone-call":         {},
+	"phone-forwarded":    {},
+	"phone-incoming":     {},
+	"phone-missed":       {},
+	"phone-off":          {},
+	"phone-outgoing":     {},
+	"phone":              {},
+	"pie-chart":          {},
+	"play-circle":        {},
+	"play":               {},
+	"plus-circle":        {},
+	"plus-square":        {},
+	"plus":               {},
+	"pocket":             {},
+	"power":              {},
+	"printer":            {},
+	"radio":              {},
+	"refresh-ccw":        {},
+	"refresh-cw":         {},
+	"repeat":             {},
+	"rewind":             {},
+	"rotate-ccw":         {},
+	"rotate-cw":          {},
+	"rss":                {},
+	"save":               {},
+	"scissors":           {},
+	"search":             {},
+	"send":               {},
+	"server":             {},
+	"settings":           {},
+	"share-2":            {},
+	"share":              {},
+	"shield-off":         {},
+	"shield":             {},
+	"shopping-bag":       {},
+	"shopping-cart":      {},
+	"shuffle":            {},
+	"sidebar":            {},
+	"skip-back":          {},
+	"skip-forward":       {},
+	"slash":              {},
+	"sliders":            {},
+	"smartphone":         {},
+	"speaker":            {},
+	"square":             {},
+	"star":               {},
+	"stop-circle":        {},
+	"sun":                {},
+	"sunrise":            {},
+	"sunset":             {},
+	"table":              {},
+	"tablet":             {},
+	"tag":                {},
+	"target":             {},
+	"terminal":           {},
+	"thermometer":        {},
+	"thumbs-down":        {},
+	"thumbs-up":          {},
+	"toggle-left":        {},
+	"toggle-right":       {},
+	"trash-2":            {},
+	"trash":              {},
+	"trending-down":      {},
+	"trending-up":        {},
+	"triangle":           {},
+	"truck":              {},
+	"tv":                 {},
+	"type":               {},
+	"umbrella":           {},
+	"underline":          {},
+	"unlock":             {},
+	"upload-cloud":       {},
+	"upload":             {},
+	"user-check":         {},
+	"user-minus":         {},
+	"user-plus":          {},
+	"user-x":             {},
+	"user":               {},
+	"users":              {},
+	"video-off":          {},
+	"video":              {},
+	"voicemail":          {},
+	"volume-1":           {},
+	"volume-2":           {},
+	"volume-x":           {},
+	"volume":             {},
+	"watch":              {},
+	"wifi-off":           {},
+	"wifi":               {},
+	"wind":               {},
+	"x-circle":           {},
+	"x-square":           {},
+	"x":                  {},
+	"zap-off":            {},
+	"zap":                {},
+	"zoom-in":            {},
+	"zoom-out":           {},
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runsimage
+func isImageOnDockerRegistry(image string) bool {
+	return strings.HasPrefix(image, "docker://") ||
+		strings.HasPrefix(image, "gcr.io/") ||
+		strings.HasPrefix(image, "pkg.dev/") ||
+		strings.HasPrefix(image, "ghcr.io/") ||
+		strings.HasPrefix(image, "docker.io/")
+}
+
+// RuleAction is a rule to check running action in steps of jobs.
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
+type RuleAction struct {
+	RuleBase
+	cache *LocalActionsCache
+	// shared are the findings about a local action itself (see reportOnce).
+	shared []*Error
+	// wf is the file being checked, for the version comments of the steps.
+	wf *Workflow
+	// lock is the Actions lock file as it applies to the workflow, nil when it does not (see RuleEnv.workflowLock).
+	lock *workflowLock
+	// online reads the metadata of the actions which are not in the data set; nil when the online checks are off.
+	online *onlineSession
+}
+
+// NewRuleAction creates new RuleAction instance.
+func NewRuleAction(cache *LocalActionsCache) *RuleAction {
+	return &RuleAction{
+		RuleBase: RuleBase{
+			name: "action",
+			desc: "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+		},
+		cache: cache,
+	}
+}
+
+// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
+func (rule *RuleAction) VisitWorkflowPre(n *Workflow) error {
+	rule.wf = n
+	return nil
+}
+
+// VisitStep is callback when visiting Step node.
+func (rule *RuleAction) VisitStep(n *Step) error {
+	e, ok := n.Exec.(*ExecAction)
+	if !ok || e.Uses == nil {
+		return nil
+	}
+
+	if e.Uses.ContainsExpression() {
+		// Cannot parse specification made with interpolation. Give up
+		return nil
+	}
+
+	spec := e.Uses.Value
+	if rule.config.allowsURLUses() && isURLUses(spec) {
+		rule.checkURLAction(spec, e)
+		return nil
+	}
+	ref := ParseUses(spec)
+
+	switch {
+	case ref.Kind == UsesLocal:
+		// Relative to repository root
+		rule.checkLocalAction(spec, e)
+	case ref.Kind == UsesDocker || strings.HasPrefix(spec, "docker://"):
+		// ParseUses reports "docker://" without an image as invalid. It is still a Docker reference and
+		// was never reported as a malformed repository action.
+		rule.checkDockerAction(ref, e)
+	default:
+		rule.checkRepoAction(ref, e)
+	}
+	return nil
+}
+
+// Check {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref}
+func (rule *RuleAction) checkRepoAction(ref *UsesRef, exec *ExecAction) {
+	spec := ref.Raw
+	if ref.Kind == UsesInvalid {
+		rule.invalidActionFormat(exec.Uses.Pos, spec, ref.Problem)
+		if ref.Problem != usesProblemEmptyPart {
+			return
+		}
+	}
+
+	if msg := unpinnedUsesMessage(rule.config, ref, false); msg != "" && !rule.lockPins(ref) {
+		rule.ReportID("unpinned-uses", exec.Uses.Pos, msg)
+	}
+
+	var comments *CommentIndex
+	if rule.wf != nil {
+		comments = rule.wf.Comments
+	}
+	ps, found := resolvePopularSpec(ref, exec.Uses, comments, knownPopularAction)
+	if !found {
+		rule.Debug("This action is not found in popular actions data set: %s", spec)
+		rule.checkRemoteAction(ref, exec)
+		return
+	}
+	meta, ok := PopularActions[ps.Key]
+	if !ok {
+		// Not in the data set of inputs, but known to run on a runtime which is gone
+		msg := "the runner of %q action is too old to run on GitHub Actions%s. update the action's version to fix this issue"
+		if ps.Source == popularFromComment {
+			msg += ", or the version comment if it is out of date"
+		}
+		rule.ReportIDf("outdated-action-runner", exec.Uses.Pos, msg, spec, ps.note())
+		return
+	}
+	if meta.SkipInputs {
+		rule.Debug("This action skips to check inputs: %s", ps.Key)
+		return
+	}
+
+	rule.checkAction(meta, exec, func(m *ActionMetadata) string {
+		return ps.describe(spec)
+	})
+}
+
+// remoteActionLookup returns the repository action of the `uses:` value for which GitHub can be asked for
+// the metadata, or false for a value which cannot be looked up: not a repository action, an expression, a short
+// SHA (which GitHub does not accept in `uses:`) or a name that is not a plain GitHub name.
+func remoteActionLookup(ref *UsesRef) bool {
+	if ref.Kind != UsesAction || ref.Dynamic || !ref.HasRef || ref.RefKind == RefShortSHA {
+		return false
+	}
+	if !validGitHubOwner(ref.Owner) || !validGitHubRepo(ref.Repo) || !validGitRefName(ref.Ref) {
+		return false
+	}
+	return ref.Subpath == "" || validRepoFilePath(strings.Trim(ref.Subpath, "/"))
+}
+
+// checkRemoteAction checks the inputs of an action which is not in the data set against its action.yml at
+// the pinned ref, read from GitHub with --online. When the metadata cannot be read nothing is reported.
+func (rule *RuleAction) checkRemoteAction(ref *UsesRef, exec *ExecAction) {
+	if rule.online == nil || !remoteActionLookup(ref) {
+		return
+	}
+	meta, err := rule.online.RemoteAction(ref.Owner, ref.Repo, ref.Subpath, ref.Ref)
+	if err != nil || meta == nil {
+		rule.Debug("%s: no action metadata to check the inputs against: %v", ref.Raw, err)
+		return
+	}
+	rule.Debug("Checking the inputs of %s against its metadata read from GitHub", ref.Raw)
+	rule.checkAction(meta, exec, func(*ActionMetadata) string {
+		return strconv.Quote(ref.Raw) + " (action.yml read from GitHub with --online)"
+	})
+}
+
+// isURLUses reports whether the value of `uses:` starts like the URL of a repository.
+func isURLUses(spec string) bool {
+	return strings.HasPrefix(spec, "https://") || strings.HasPrefix(spec, "http://")
+}
+
+// repoOfURLUses returns the {owner}/{repo}[/{path}]@{ref} of a `uses:` written as the URL of a repository, which
+// the rules that look at the repository of an action read instead (forbidden-uses, required-actions). A value which
+// is not a URL is returned as it is.
+func repoOfURLUses(spec string) string {
+	if !isURLUses(spec) {
+		return spec
+	}
+	rest := spec[strings.Index(spec, "://")+3:]
+	if _, repo, ok := strings.Cut(rest, "/"); ok {
+		return repo
+	}
+	return spec
+}
+
+// checkURLAction checks `uses: https://{host}/{owner}/{repo}[/{path}]@{ref}`, which Forgejo and Gitea accept. The
+// value is valid when it has a host, an owner, a repository and a ref. It follows the pinning policy of
+// "unpinned-uses" for {owner}/{repo}. It is not looked up in the data of the actions of GitHub, since the
+// action at another host is another action.
+func (rule *RuleAction) checkURLAction(spec string, exec *ExecAction) {
+	rest := spec[strings.Index(spec, "://")+3:]
+	host, repoPath, hasPath := strings.Cut(rest, "/")
+	problem := ""
+	var ref *UsesRef
+	switch {
+	case host == "" || strings.ContainsAny(host, "@ "):
+		problem = "host is missing"
+	case !hasPath:
+		problem = usesProblemOwnerMissing
+	default:
+		if ref = ParseUses(repoPath); ref.Kind == UsesInvalid {
+			problem = ref.Problem
+		}
+	}
+	if problem != "" {
+		rule.ReportIDf("invalid-uses", exec.Uses.Pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\" or, with the platform %q, \"https://{host}/{owner}/{repo}[/{path}]@{ref}\"", spec, problem, rule.config.platformName())
+		return
+	}
+	ref.Raw = spec // the message names the whole value
+	if msg := unpinnedUsesMessage(rule.config, ref, false); msg != "" {
+		rule.ReportID("unpinned-uses", exec.Uses.Pos, msg)
+	}
+}
+
+func (rule *RuleAction) invalidActionFormat(pos *Pos, spec string, why string) {
+	rule.ReportIDf("invalid-uses", pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\" or \"{owner}/{repo}/{path}@{ref}\"", spec, why)
+}
+
+func (rule *RuleAction) missingRunsProp(pos *Pos, prop, ty, action, path string) {
+	rule.ReportIDf("invalid-local-action", pos, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, rule.shown(path))
+}
+
+func (rule *RuleAction) checkInvalidRunsProps(pos *Pos, r *ActionMetadataRuns, ty, action, path string, props []string) {
+	for _, prop := range props {
+		invalid := prop == "main" && r.Main != "" ||
+			prop == "pre" && r.Pre != "" ||
+			prop == "pre-if" && r.PreIf != "" ||
+			prop == "post" && r.Post != "" ||
+			prop == "post-if" && r.PostIf != "" ||
+			prop == "steps" && len(r.Steps) > 0 ||
+			prop == "image" && r.Image != "" ||
+			prop == "pre-entrypoint" && r.PreEntrypoint != "" ||
+			prop == "entrypoint" && r.Entrypoint != "" ||
+			prop == "post-entrypoint" && r.PostEntrypoint != "" ||
+			prop == "args" && r.Args != nil ||
+			prop == "env" && r.Env != nil
+
+		if invalid {
+			rule.ReportIDf("invalid-local-action", pos, `%q is not allowed in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, rule.shown(path))
+		}
+	}
+}
+
+func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *Pos) {
+	f := filepath.FromSlash(file)
+	if f == "" {
+		return
+	}
+	p := filepath.Join(dir, f)
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		rule.ReportIDf("invalid-local-action", pos, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, rule.shown(dir), prop, name)
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions
+func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+	if r.Image == "" {
+		rule.missingRunsProp(pos, "image", "Docker", name, dir)
+	} else if !isImageOnDockerRegistry(r.Image) {
+		rule.checkRunsFileExists(r.Image, dir, "image", name, pos)
+		if filepath.Base(filepath.FromSlash(r.Image)) != "Dockerfile" {
+			rule.ReportIDf("invalid-local-action", pos, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, rule.shown(dir))
+		}
+	}
+	rule.checkRunsFileExists(r.PreEntrypoint, dir, "pre-entrypoint", name, pos)
+	rule.checkRunsFileExists(r.Entrypoint, dir, "entrypoint", name, pos)
+	rule.checkRunsFileExists(r.PostEntrypoint, dir, "post-entrypoint", name, pos)
+	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "steps"})
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
+func (rule *RuleAction) checkLocalCompositeActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+	if r.Steps == nil {
+		rule.missingRunsProp(pos, "steps", "Composite", name, dir)
+	}
+	rule.checkInvalidRunsProps(pos, r, "Composite", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args"})
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions
+func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+	if r.Main == "" {
+		rule.missingRunsProp(pos, "main", "JavaScript", name, dir)
+	} else {
+		rule.checkRunsFileExists(r.Main, dir, "main", name, pos)
+	}
+
+	rule.checkRunsFileExists(r.Pre, dir, "pre", name, pos)
+	if r.Pre == "" && r.PreIf != "" {
+		rule.ReportIDf("invalid-local-action", pos, `"pre" is required when "pre-if" is specified in "runs" section in %q action. the action is defined at %q`, name, rule.shown(dir))
+	}
+
+	rule.checkRunsFileExists(r.Post, dir, "post", name, pos)
+	if r.Post == "" && r.PostIf != "" {
+		rule.ReportIDf("invalid-local-action", pos, `"post" is required when "post-if" is specified in "runs" section in %q action. the action is defined at %q`, name, rule.shown(dir))
+	}
+
+	rule.checkInvalidRunsProps(pos, r, "JavaScript", name, dir, []string{"steps", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+}
+
+func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
+	for _, i := range meta.Inputs {
+		if i.Deprecated && i.DeprecationMessage == "" {
+			rule.ReportIDf(
+				"invalid-local-action",
+				pos,
+				"input %q is deprecated but \"deprecationMessage\" is empty in metadata of %q action at %q",
+				i.Name,
+				meta.Name,
+				rule.shown(meta.Path()),
+			)
+		}
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
+func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
+	switch r := &meta.Runs; r.Using {
+	case "":
+		rule.ReportIDf("invalid-local-action", pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, rule.shown(meta.Dir()))
+	case "docker":
+		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
+	case "composite":
+		rule.checkLocalCompositeActionRuns(r, meta.Dir(), meta.Name, pos)
+	case "node20", "node24":
+		rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
+	default:
+		rule.ReportIDf("invalid-local-action", pos, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are "composite", "docker", "node20", and "node24". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, rule.shown(meta.Dir()))
+
+		// Probably invalid version of Node.js runner. Assume it is JavaScript action to find as many errors as possible
+		if strings.HasPrefix(r.Using, "node") {
+			rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
+		}
+	}
+}
+
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
+func (rule *RuleAction) checkDockerAction(ref *UsesRef, exec *ExecAction) {
+	uri := "docker://" + ref.Image
+
+	if _, err := url.Parse(uri); err != nil {
+		rule.ReportIDf(
+			"invalid-uses",
+			exec.Uses.Pos,
+			"URI for Docker container %q is invalid: %s (tag=%s)",
+			uri,
+			err.Error(),
+			ref.Tag,
+		)
+	}
+
+	if ref.HasTag && ref.Tag == "" {
+		rule.ReportIDf("invalid-uses", exec.Uses.Pos, "tag of Docker action should not be empty: %q", uri)
+	}
+
+	if msg := unpinnedUsesMessage(rule.config, ref, false); msg != "" {
+		rule.ReportID("unpinned-uses", exec.Uses.Pos, msg)
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *ExecAction) {
+	if meta.Name == "" {
+		rule.ReportIDf("invalid-local-action", action.Uses.Pos, "name is required in action metadata %q", rule.shown(meta.Path()))
+	}
+	if meta.Description == "" {
+		rule.ReportIDf("invalid-local-action", action.Uses.Pos, "description is required in metadata of %q action at %q", meta.Name, rule.shown(meta.Path()))
+	}
+	if meta.Branding.Icon != "" {
+		if _, ok := BrandingIcons[strings.ToLower(meta.Branding.Icon)]; !ok {
+			rule.ReportIDf(
+				"invalid-local-action",
+				action.Uses.Pos,
+				"incorrect icon name %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon",
+				meta.Branding.Icon,
+				meta.Name,
+				rule.shown(meta.Path()),
+			)
+		}
+	}
+	if meta.Branding.Color != "" {
+		if _, ok := BrandingColors[strings.ToLower(meta.Branding.Color)]; !ok {
+			rule.ReportIDf(
+				"invalid-local-action",
+				action.Uses.Pos,
+				"incorrect color %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor",
+				meta.Branding.Color,
+				meta.Name,
+				rule.shown(meta.Path()),
+			)
+		}
+	}
+	rule.checkLocalActionInputs(meta, action.Uses.Pos)
+	rule.checkLocalActionRuns(meta, action.Uses.Pos)
+}
+
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
+func (rule *RuleAction) checkLocalAction(spec string, action *ExecAction) {
+	if msg := selfRepositoryProblem(spec); msg != "" {
+		rule.ReportID("invalid-local-action", action.Uses.Pos, msg)
+		return
+	}
+	meta, err := rule.cache.Lookup(spec)
+	if err != nil {
+		rule.reportOnce(func() { rule.ReportID("invalid-local-action", action.Uses.Pos, err.Error()) })
+		return
+	}
+	if meta == nil {
+		rule.checkSelfRepositoryActionExists(spec, action)
+		return
+	}
+
+	rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, spec)
+	rule.reportOnce(func() { rule.checkLocalActionMetadata(meta, action) })
+
+	rule.checkAction(meta, action, func(m *ActionMetadata) string {
+		return fmt.Sprintf("%q defined at %q", m.Name, spec)
+	})
+}
+
+// checkSelfRepositoryActionExists reports a "$/path" reference of an action which the repository does not have.
+// Unlike "./path", which is looked up in the workspace at run time (where an earlier step can have put the
+// action), "$/" refers to the repository at the commit that runs the workflow, so a directory without action.yml
+// is a certain failure. Nothing is reported when the repository is not known (standard input), or when the path
+// is in a submodule, whose files are not part of the commit.
+func (rule *RuleAction) checkSelfRepositoryActionExists(spec string, action *ExecAction) {
+	rel, ok := strings.CutPrefix(spec, selfRepositoryUsesPrefix)
+	if !ok || rule.cache == nil || rule.cache.proj == nil {
+		return
+	}
+	root := rule.cache.proj.RootDir()
+	if root == "" || inSubmodule(root, rel) {
+		return
+	}
+	dir := "./"
+	if c := path.Clean(rel); c != "." {
+		dir += c
+	}
+	rule.ReportIDf(
+		"invalid-local-action",
+		action.Uses.Pos,
+		"%q does not refer to an action: the repository has no action.yml or action.yaml in %q. a self-repository reference is resolved at the commit that runs the workflow, so the action must be in the repository",
+		spec, dir,
+	)
+}
+
+// inSubmodule reports whether the path (relative to the root of the repository) is in a submodule listed in .gitmodules.
+func inSubmodule(root, rel string) bool {
+	b, err := os.ReadFile(filepath.Join(root, ".gitmodules"))
+	if err != nil {
+		return false
+	}
+	rel = path.Clean(rel)
+	for _, l := range strings.Split(string(b), "\n") {
+		k, v, ok := strings.Cut(strings.TrimSpace(l), "=")
+		if !ok || strings.TrimSpace(k) != "path" {
+			continue
+		}
+		if p := path.Clean(strings.TrimSpace(v)); rel == p || strings.HasPrefix(rel, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// reportOnce runs report and flags the findings it reported as findings about the action, not about this use of
+// it: the linter keeps only the first of the findings which every use reports. Reporting them at the first search
+// of the action only, as the cache used to make the rule do, made the file with the finding depend on the order
+// in which the goroutines linted the files.
+// shown returns the path of a file or directory of the project as the message shows it: relative to the root
+// of the project with a leading "./", the way a workflow refers to a local action. The absolute path of the
+// checkout is not in the message, so the message is the same on every machine and in every directory (a SARIF
+// log, a baseline and a CI log are comparable). A path outside the project stays as it is.
+func (rule *RuleAction) shown(p string) string {
+	if rule.cache == nil || rule.cache.proj == nil || p == "" {
+		return p
+	}
+	rel, err := filepath.Rel(absPath(rule.cache.proj.RootDir()), absPath(p))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return p
+	}
+	if rel == "." {
+		return "./"
+	}
+	return "./" + filepath.ToSlash(rel)
+}
+
+func (rule *RuleAction) reportOnce(report func()) {
+	n := len(rule.errs)
+	report()
+	rule.shared = append(rule.shared, rule.errs[n:]...)
+}
+
+// sharedErrs returns the findings which describe an action and not the use of it. The linter keeps only the first
+// of the findings with the same ID and message.
+func (rule *RuleAction) sharedErrs() []*Error { return rule.shared }
+
+var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
+
+func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, describe func(*ActionMetadata) string) {
+	// Check specified inputs are defined in action's inputs spec
+	for id, i := range exec.Inputs {
+		m, ok := meta.Inputs[id]
+		if !ok {
+			ns := make([]string, 0, len(meta.Inputs))
+			for _, i := range meta.Inputs {
+				ns = append(ns, i.Name)
+			}
+			rule.ReportIDf(
+				"unknown-action-input",
+				i.Name.Pos,
+				"input %q is not defined in action %s. available inputs are %s",
+				i.Name.Value,
+				describe(meta),
+				sortedQuotes(ns),
+			)
+		} else if m.Deprecated && !m.Required {
+			// Note: Using required inputs cannot be avoided. So we don't report it as error (though this should not
+			// happen normally).
+			msg := fmt.Sprintf(
+				"avoid using deprecated input %q in action %s",
+				i.Name.Value,
+				describe(meta),
+			)
+			d := reNewlineWithIndent.ReplaceAllString(strings.TrimRight(m.DeprecationMessage, ". "), " ")
+			if d != "" {
+				msg += ": " + d
+			}
+			rule.ReportID("deprecated-action-input", i.Name.Pos, msg)
+		}
+	}
+
+	// Check mandatory inputs are specified. They may be in a "with:" which is an expression (or a ${{ insert }} key)
+	if exec.InputsUnknown() {
+		return
+	}
+	for id, i := range meta.Inputs {
+		if i.Required {
+			if _, ok := exec.Inputs[id]; !ok {
+				ns := make([]string, 0, len(meta.Inputs))
+				for _, i := range meta.Inputs {
+					if i.Required {
+						ns = append(ns, i.Name)
+					}
+				}
+				rule.ReportIDf(
+					"missing-action-input",
+					exec.Uses.Pos,
+					"missing input %q which is required by action %s. all required inputs are %s",
+					i.Name,
+					describe(meta),
+					sortedQuotes(ns),
+				)
+			}
+		}
+	}
+}
+
+func init() {
+	registerRules(
+		RuleInfo{ID: "deprecated-action-input", Group: RuleGroupCorrectness, Summary: "A deprecated input of an action is used.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "deprecated-inputs-usage"},
+		RuleInfo{ID: "invalid-local-action", Group: RuleGroupCorrectness, Summary: "A local action cannot be loaded or its metadata is invalid.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "action-metadata-syntax"},
+		RuleInfo{ID: "invalid-uses", Group: RuleGroupCorrectness, Summary: "A uses: value does not follow the format of an action or a Docker image.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "check-action-format"},
+		RuleInfo{ID: "missing-action-input", Group: RuleGroupCorrectness, Summary: "A required input of an action is not specified.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "check-local-action-inputs"},
+		RuleInfo{ID: "outdated-action-runner", Group: RuleGroupCorrectness, Summary: "An action runs on a runtime which GitHub Actions no longer supports.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "detect-outdated-popular-actions"},
+		RuleInfo{ID: "unknown-action-input", Group: RuleGroupCorrectness, Summary: "An input which the action does not define is specified.", DefaultLevel: SeverityError, Profile: ProfileCorrectness, DocsAnchor: "check-local-action-inputs"},
+		RuleInfo{ID: "unpinned-uses", Group: RuleGroupPolicy, Summary: "An action, reusable workflow or Docker image is not pinned to a commit SHA or digest.", DefaultLevel: SeverityError, Profile: ProfileDefault, Fixable: true, DocsAnchor: "check-action-format", Options: unpinnedUsesOptions},
+	)
+	registerRuleFactory("action", func(env *RuleEnv) []Rule {
+		r := NewRuleAction(env.localActions)
+		r.lock = env.workflowLock()
+		r.online = env.online
+		return []Rule{r}
+	})
+}

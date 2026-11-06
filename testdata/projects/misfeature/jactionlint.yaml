@@ -1,0 +1,4 @@
+rules:
+  misfeature:
+    level: warn
+    pedantic: true

@@ -1,0 +1,13 @@
+on:
+  push:
+    branches: [main]
+
+# a single job gets the scope either way, but a job added later inherits it silently
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo release

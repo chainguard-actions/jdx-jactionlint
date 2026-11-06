@@ -1,0 +1,1171 @@
+package jactionlint
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"golang.org/x/sys/execabs"
+)
+
+func TestMain(m *testing.M) {
+	// Point $XDG_CONFIG_HOME at an empty directory so that tests do not pick up
+	// a user-global config file on the machine running them.
+	dir, err := os.MkdirTemp("", "jactionlint-test-xdg-config")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("XDG_CONFIG_HOME", dir)
+	// The tests of the rules and the golden files were written for the rules of the correctness profile. A
+	// test of the default profile selects it (see withDefaultProfile).
+	implicitProfile = ProfileCorrectness
+	// The release cooldown compares with "now": the dates of testdata/online/github.json are around this one
+	releaseNow = func() time.Time { return time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC) }
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
+}
+
+type testErrorReader struct{}
+
+func (r testErrorReader) Read(p []byte) (int, error) {
+	return 0, errors.New("dummy read error")
+}
+
+func TestLinterLintOK(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("testdata", "ok")
+
+	es, err := os.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+
+	fs := make([]string, 0, len(es))
+	for _, e := range es {
+		if e.IsDir() {
+			continue
+		}
+		n := e.Name()
+		if strings.HasPrefix(n, dependabotFixturePrefix) {
+			continue // Dependabot configurations are checked by TestDependabotFixtures
+		}
+		if strings.HasPrefix(n, compositeFixturePrefix) {
+			continue // Action metadata is checked by TestCompositeActionFixtures
+		}
+		if strings.HasSuffix(n, ".yaml") || strings.HasSuffix(n, ".yml") {
+			fs = append(fs, filepath.Join(dir, n))
+		}
+	}
+
+	proj := &Project{root: dir}
+	shellcheck, _ := execabs.LookPath("shellcheck")
+	pyflakes, _ := execabs.LookPath("pyflakes")
+
+	for _, f := range fs {
+		t.Run(filepath.Base(f), func(t *testing.T) {
+			if strings.Contains(f, "shellcheck") && shellcheck == "" {
+				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
+			}
+			if strings.Contains(f, "pyflakes") && pyflakes == "" {
+				t.Skip("skipping", f, "because \"pyflakes\" command does not exist in system")
+			}
+			if strings.Contains(f, "github_script") {
+				skipWithoutNode(t)
+			}
+
+			opts := LinterOptions{
+				Shellcheck: shellcheck,
+				Pyflakes:   pyflakes,
+			}
+
+			linter, err := NewLinter(io.Discard, &opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// The security rules of the fixtures of other checks would only add noise: see rule_batch_d_test.go
+			// for the fixtures which show that the rules of the run-script batch stay quiet.
+			linter.defaultConfig = withoutMissingTimeout(withFixtureRules(&Config{}))
+			if strings.HasSuffix(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)), "_online") {
+				linter.online = onlineSettings{enabled: true, client: onlineFixtureClient(t)}
+			}
+
+			t.Log("Linting workflow file", f)
+			errs, err := linter.LintFile(f, proj)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(errs) > 0 {
+				t.Fatal(errs)
+			}
+		})
+	}
+}
+
+func testFindAllWorkflowsInDir(subdir string) (string, []string, error) {
+	dir := filepath.Join("testdata", subdir)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", nil, err
+	}
+
+	fs := make([]string, 0, len(entries))
+	for _, info := range entries {
+		if info.IsDir() {
+			continue
+		}
+		n := info.Name()
+		if strings.HasPrefix(n, dependabotFixturePrefix) {
+			continue // Dependabot configurations are checked by TestDependabotFixtures
+		}
+		if strings.HasPrefix(n, compositeFixturePrefix) {
+			continue // Action metadata is checked by TestCompositeActionFixtures
+		}
+		if strings.HasSuffix(n, ".yaml") || strings.HasSuffix(n, ".yml") {
+			fs = append(fs, filepath.Join(dir, n))
+		}
+	}
+
+	return dir, fs, nil
+}
+
+func checkErrors(t *testing.T, outfile string, errs []*Error) {
+	t.Helper()
+	t.Logf("Checking %d errors with %q", len(errs), outfile)
+	for i, err := range errs {
+		t.Logf("  Error[%d]: %s", i, err.Error())
+	}
+
+	expected := []string{}
+	{
+		f, err := os.Open(outfile)
+		if err != nil {
+			panic(err)
+		}
+		s := bufio.NewScanner(f)
+		for s.Scan() {
+			expected = append(expected, s.Text())
+		}
+		if err := s.Err(); err != nil {
+			panic(err)
+		}
+	}
+
+	slices.SortFunc(errs, compareErrors)
+
+	if len(errs) != len(expected) {
+		ms := make([]string, 0, len(errs))
+		for _, err := range errs {
+			ms = append(ms, err.Error())
+		}
+		t.Fatalf("%d errors are expected but actually got %d errors:\n%v", len(expected), len(errs), strings.Join(ms, "\n"))
+	}
+
+	for i := 0; i < len(errs); i++ {
+		errs[i].Filepath = filepath.ToSlash(errs[i].Filepath) // For Windows
+		want, have := expected[i], errs[i].Error()
+		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
+			want := regexp.MustCompile(want[1 : len(want)-1])
+			if !want.MatchString(have) {
+				t.Errorf("error message mismatch at %dth error does not match to regular expression\n  want: /%s/\n  have: %q", i+1, want, have)
+			}
+		} else {
+			if want != have {
+				t.Errorf("error message mismatch at %dth error does not match exactly\n  want: %q\n  have: %q", i+1, want, have)
+			}
+		}
+	}
+}
+
+func TestLinterLintError(t *testing.T) {
+	for _, subdir := range []string{"examples", "err"} {
+		dir, infiles, err := testFindAllWorkflowsInDir(subdir)
+		if err != nil {
+			panic(err)
+		}
+
+		proj := &Project{root: dir}
+
+		shellcheck := ""
+		if p, err := execabs.LookPath("shellcheck"); err == nil {
+			shellcheck = p
+		}
+
+		pyflakes := ""
+		if p, err := execabs.LookPath("pyflakes"); err == nil {
+			pyflakes = p
+		}
+
+		for _, infile := range infiles {
+			base := strings.TrimSuffix(infile, filepath.Ext(infile))
+			testName := filepath.Base(base)
+			t.Run(subdir+"/"+testName, func(t *testing.T) {
+				t.Log("Linting workflow file", infile)
+				b, err := os.ReadFile(infile)
+				if err != nil {
+					panic(err)
+				}
+
+				o := LinterOptions{}
+				// A fixture named ..._asof_YYYY_MM_DD is linted on that day, so that it does not change when a date
+				// that a check depends on (the retirement of a runner label) passes
+				if i := strings.LastIndex(testName, "_asof_"); i >= 0 {
+					day, err := time.Parse("2006_01_02", testName[i+len("_asof_"):])
+					if err != nil {
+						t.Fatalf("invalid date in the name of %s: %v", testName, err)
+					}
+					o.Now = func() time.Time { return day }
+				}
+
+				if strings.Contains(testName, "shellcheck") {
+					if shellcheck == "" {
+						t.Skip("skipped because \"shellcheck\" command does not exist in system")
+					}
+					o.Shellcheck = shellcheck
+				}
+
+				if strings.Contains(testName, "pyflakes") {
+					if pyflakes == "" {
+						t.Skip("skipped because \"pyflakes\" command does not exist in system")
+					}
+					o.Pyflakes = pyflakes
+				}
+
+				if strings.Contains(testName, "github_script") {
+					skipWithoutNode(t)
+				}
+
+				l, err := NewLinter(io.Discard, &o)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				l.defaultConfig = fixtureConfig()
+				if strings.HasSuffix(testName, "_online") {
+					l.online = onlineSettings{enabled: true, client: onlineFixtureClient(t)}
+					// The repository whose environments the rules look at, see environmentGates
+					t.Setenv("GITHUB_REPOSITORY", "example/environments")
+				}
+				if strings.HasSuffix(testName, "_security") {
+					l.defaultConfig = fixtureConfig("unpinned-uses")
+				}
+				if strings.HasSuffix(testName, "_require_permissions") {
+					l.defaultConfig = fixtureConfig("missing-permissions")
+				}
+				if strings.HasSuffix(testName, "_checkout") {
+					l.defaultConfig = fixtureConfig("local-action-checkout")
+				}
+				// A fixture can have the configuration it needs in a file next to it
+				if cfg := fixtureConfigFile(t, base+".config"); cfg != nil {
+					l.defaultConfig = cfg
+				}
+				// The example of a rule which the profile of the tests does not enable (see TestMain)
+				// runs with the rule on
+				if id := strings.ReplaceAll(strings.TrimSuffix(testName, "_example"), "_", "-"); ruleIndex[id] != nil && !ruleIndex[id].Online {
+					if _, ok := l.defaultConfig.Rules[id]; !ok {
+						l.defaultConfig.Rules[id] = RuleConfig{Level: SeverityError}
+					}
+				}
+
+				errs, err := l.Lint("test.yaml", b, proj)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				checkErrors(t, base+".out", errs)
+			})
+		}
+	}
+}
+
+func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
+	t.Parallel()
+	shellcheck, err := execabs.LookPath("shellcheck")
+	if err != nil {
+		t.Skipf("shellcheck is not found: %s", err)
+	}
+
+	pyflakes, err := execabs.LookPath("pyflakes")
+	if err != nil {
+		t.Skipf("pyflakes is not found: %s", err)
+	}
+
+	dir, files, err := testFindAllWorkflowsInDir("examples")
+	if err != nil {
+		panic(err)
+	}
+
+	// Root directory must be testdata/examples/ since some workflow assumes it
+	proj := &Project{root: dir}
+
+	_, fs, err := testFindAllWorkflowsInDir("err")
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, fs...)
+	// The examples of the online checks need the GitHub fixtures. TestLinterLintError runs them.
+	files = slices.DeleteFunc(files, func(f string) bool { return strings.HasSuffix(strings.TrimSuffix(f, filepath.Ext(f)), "_online") })
+
+	o := LinterOptions{
+		Shellcheck: shellcheck,
+		Pyflakes:   pyflakes,
+	}
+
+	l, err := NewLinter(io.Discard, &o)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Opt-in lints are enabled so that every example (e.g. "*_security.yaml") causes an error
+	cfg := fixtureConfig("unpinned-uses", "local-action-checkout")
+	cfg.Profile = ProfileDefault
+	l.defaultConfig = cfg
+
+	errs, err := l.LintFiles(files, proj)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check each example workflow file caused at least one error
+CheckFiles:
+	for _, f := range files {
+		if fixtureConfigFile(t, strings.TrimSuffix(f, filepath.Ext(f))+".config") != nil {
+			continue // Needs its own configuration, which is not applied here
+		}
+		for _, e := range errs {
+			if e.Filepath == f {
+				continue CheckFiles
+			}
+		}
+		if !strings.Contains(f, "pyflakes") && !strings.Contains(f, "shellcheck") && !strings.Contains(f, "github_script") {
+			t.Errorf("Workflow %q caused no error: %v", f, errs)
+		}
+	}
+}
+
+func TestLintFindProjectFromPath(t *testing.T) {
+	d := filepath.Join("testdata", "find_project")
+	f := filepath.Join(d, ".github", "workflows", "test.yaml")
+	b, err := os.ReadFile(f)
+	if err != nil {
+		panic(err)
+	}
+
+	testEnsureDotGitDir(d)
+
+	lint := func(path string) []*Error {
+		l, err := NewLinter(io.Discard, &LinterOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l.defaultConfig = withoutMissingTimeout(&Config{})
+		errs, err := l.Lint(path, b, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return errs
+	}
+
+	errs := lint(f)
+	if len(errs) == 0 {
+		t.Fatal("no error was detected though the project was found from path parameter")
+	}
+
+	errs = lint("<stdin>")
+	if len(errs) > 0 {
+		t.Fatal("some error was detected though path parameter is stdin", errs)
+	}
+
+	errs = lint(filepath.Join("this-dir-doesnt-exist", "not-found.yaml"))
+	if len(errs) > 0 {
+		t.Fatal("some error was detected though path parameter does not exist", errs)
+	}
+}
+
+func TestLinterLintProject(t *testing.T) {
+	root := filepath.Join("testdata", "projects")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, info := range entries {
+		if !info.IsDir() {
+			continue
+		}
+
+		name := info.Name()
+		t.Run("project/"+name, func(t *testing.T) {
+			repo := filepath.Join(root, name)
+			t.Log("Linting project at", repo)
+
+			opts := LinterOptions{
+				WorkingDir: repo,
+			}
+			// Both the name of this project and the name used by actionlint are accepted
+			for _, n := range []string{"jactionlint.yaml", "actionlint.yaml"} {
+				cfg := filepath.Join(repo, n)
+				if _, err := os.Stat(cfg); err == nil {
+					opts.ConfigFile = cfg
+					break
+				}
+			}
+			linter, err := NewLinter(io.Discard, &opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Keep the golden files focused on one check at a time
+			cfg := &Config{}
+			if opts.ConfigFile != "" {
+				if cfg, err = ReadConfigFile(opts.ConfigFile); err != nil {
+					t.Fatal(err)
+				}
+			}
+			linter.defaultConfig = withFixtureRules(cfg)
+
+			proj := &Project{root: repo}
+			errs, err := linter.LintDir(filepath.Join(repo, "workflows"), proj)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			checkErrors(t, repo+".out", errs)
+		})
+	}
+}
+
+func TestLinterFormatErrorMessageOK(t *testing.T) {
+	tests := []struct {
+		file   string
+		format string
+	}{
+		{
+			file:   "test.json",
+			format: "{{json .}}",
+		},
+		{
+			file:   "test.jsonl",
+			format: "{{range $err := .}}{{json $err}}{{end}}",
+		},
+		{
+			file:   "test.md",
+			format: "{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\\n\\n{{$.Message}}\\n\\n```\\n{{$.Snippet}}\\n```\\n\\n{{end}}",
+		},
+	}
+
+	dir := filepath.Join("testdata", "format")
+	proj := &Project{root: dir}
+	infile := filepath.Join(dir, "test.yaml")
+	for _, tc := range tests {
+		t.Run(tc.file, func(t *testing.T) {
+			opts := LinterOptions{Format: tc.format}
+
+			var b strings.Builder
+			l, err := NewLinter(&b, &opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			l.defaultConfig = withoutMissingTimeout(&Config{})
+			errs, err := l.LintFile(infile, proj)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(errs) == 0 {
+				t.Fatal("no error")
+			}
+
+			buf, err := os.ReadFile(filepath.Join(dir, tc.file))
+			if err != nil {
+				panic(err)
+			}
+			want := string(buf)
+
+			have := b.String()
+			// Fix path separators on Windows
+			if runtime.GOOS == "windows" {
+				slash := filepath.ToSlash(infile)
+				have = strings.ReplaceAll(have, infile, slash)
+				escaped := strings.ReplaceAll(slash, "/", `\\`)
+				have = strings.ReplaceAll(have, escaped, slash)
+			}
+
+			if diff := cmp.Diff(want, have); diff != "" {
+				t.Logf("have: %s", have)
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
+func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
+	dir := filepath.Join("testdata", "format")
+	proj := &Project{root: dir}
+	file := filepath.Join(dir, "test.yaml")
+
+	bytes, err := os.ReadFile(filepath.Join(dir, "sarif_template.txt"))
+	if err != nil {
+		panic(err)
+	}
+	format := string(bytes)
+
+	opts := LinterOptions{Format: format}
+	var b strings.Builder
+	l, err := NewLinter(&b, &opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l.defaultConfig = withFixtureRules(&Config{})
+	errs, err := l.LintFile(file, proj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(errs) == 0 {
+		t.Fatal("no error")
+	}
+
+	out := b.String()
+	// Fix path separators on Windows
+	if runtime.GOOS == "windows" {
+		slash := filepath.ToSlash(file)
+		escaped := strings.ReplaceAll(file, `\`, `\\`)
+		out = strings.ReplaceAll(out, escaped, slash)
+	}
+
+	var have interface{}
+	if err := json.Unmarshal([]byte(out), &have); err != nil {
+		t.Fatalf("output is not JSON: %v: %q", err, out)
+	}
+
+	bytes, err = os.ReadFile(filepath.Join(dir, "test.sarif"))
+	if err != nil {
+		panic(err)
+	}
+	var want interface{}
+	if err := json.Unmarshal(bytes, &want); err != nil {
+		panic(err)
+	}
+
+	if diff := cmp.Diff(want, have); diff != "" {
+		t.Logf("have: %s", have)
+		t.Fatal(diff)
+	}
+}
+
+func TestLinterLintStdinOK(t *testing.T) {
+	for _, f := range []string{"", "foo.yaml"} {
+		l, err := NewLinter(io.Discard, &LinterOptions{StdinFileName: f})
+		if err != nil {
+			t.Fatalf("creating Linter object with stdin file name %q caused error: %v", f, err)
+		}
+
+		in := []byte(`on: push
+jobs:
+  job:
+    runs-on: foo
+	steps:
+	  - run: echo`)
+		errs, err := l.LintStdin(bytes.NewReader(in))
+		if err != nil {
+			t.Fatalf("linting input with stdin file name %q caused error: %v", f, err)
+		}
+		if len(errs) != 1 {
+			t.Fatalf("unexpected number of errors with stdin file name %q: %v", f, errs)
+		}
+
+		want := f
+		if want == "" {
+			want = "<stdin>"
+		}
+		if errs[0].Filepath != want {
+			t.Fatalf("file path in the error with stdin file name %q should be %q but got %q", f, want, errs[0].Filepath)
+		}
+	}
+}
+
+func TestLinterLintStdinReadError(t *testing.T) {
+	l, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = l.LintStdin(testErrorReader{})
+	if err == nil {
+		t.Fatal("error did not occur")
+	}
+	want := "could not read stdin: dummy read error"
+	have := err.Error()
+	if want != have {
+		t.Fatalf("wanted error message %q but have %q", want, have)
+	}
+}
+
+func TestLinterPathsNotFound(t *testing.T) {
+	l, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	paths := []string{
+		filepath.Join("testdata", "this-file-doesnt-exist.yaml"),                   // Relative file path (parent exists)
+		filepath.Join("this-dir-doesnt-exist", "this-file-doesnt-exist.yaml"),      // Relative file path (parent doesn't exist)
+		filepath.Join(cwd, "this-file-doesnt-exist.yaml"),                          // Absolute file path (parent exists)
+		filepath.Join(cwd, "this-dir-doesnt-exist", "this-file-doesnt-exist.yaml"), // Absolute file path (parent doesn't exist)
+	}
+
+	_, err = l.LintFiles(paths, nil)
+	if err == nil {
+		t.Fatal("no error happened")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "could not read") {
+		t.Fatal("unexpected error:", msg)
+	}
+}
+
+type customRuleForTest struct {
+	RuleBase
+	count int
+}
+
+func (r *customRuleForTest) VisitStep(n *Step) error {
+	r.count++
+	if r.count > 1 {
+		r.Errorf(n.Pos, "only single step is allowed but got %d steps", r.count)
+	}
+	return nil
+}
+
+func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
+	o := &LinterOptions{
+		OnRulesCreated: func(rules []Rule) []Rule {
+			r := &customRuleForTest{
+				RuleBase: NewRuleBase("this-is-test", ""),
+			}
+			return append(rules, r)
+		},
+	}
+
+	l, err := NewLinter(io.Discard, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.defaultConfig = withoutMissingTimeout(&Config{})
+
+	{
+		w := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+`
+		errs, err := l.Lint("test.yaml", []byte(w), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(errs) != 0 {
+			t.Fatal("wanted no error but have", errs)
+		}
+	}
+
+	{
+		w := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+      - run: echo
+`
+		errs, err := l.Lint("test.yaml", []byte(w), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(errs) != 1 {
+			t.Fatal("wanted 1 error but have", errs)
+		}
+
+		var b strings.Builder
+		errs[0].PrettyPrint(&b, nil)
+		have := b.String()
+		want := "test.yaml:7:9: only single step is allowed but got 2 steps [this-is-test]\n"
+		if have != want {
+			t.Fatalf("wanted error message %q but have %q", want, have)
+		}
+	}
+}
+
+func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
+	o := &LinterOptions{
+		OnRulesCreated: func(rules []Rule) []Rule {
+			for i, r := range rules {
+				if r.Name() == "runner-label" {
+					rules = append(rules[:i], rules[i+1:]...)
+					break
+				}
+			}
+			return rules
+		},
+	}
+
+	l, err := NewLinter(io.Discard, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.defaultConfig = withoutMissingTimeout(&Config{})
+
+	f := filepath.Join("testdata", "err", "invalid_runner_labels.yaml")
+	errs, err := l.LintFile(f, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(errs) != 0 {
+		t.Fatal("no error was expected because runner-label rule was removed but got:", errs)
+	}
+}
+
+func TestLinterGenerateDefaultConfigAlreadyExists(t *testing.T) {
+	l, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, n := range []string{"ok", "yml"} {
+		d := filepath.Join("testdata", "config", "projects", n)
+		testEnsureDotGitDir(d)
+
+		err := l.GenerateDefaultConfig(d)
+		if err == nil {
+			t.Fatal("error did not occur for project", d)
+		}
+		want := "config file already exists at"
+		msg := err.Error()
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error message %q does not contain expected text %q", msg, want)
+		}
+	}
+}
+
+func BenchmarkLintWorkflowFiles(b *testing.B) {
+	scripts := filepath.Join("testdata", "bench", "many_scripts.yaml")
+	small := filepath.Join("testdata", "bench", "small.yaml")
+	large := filepath.Join("testdata", "bench", "large.yaml")
+	min := filepath.Join("testdata", "bench", "minimal.yaml")
+	proj := &Project{root: "."}
+	shellcheck, err := execabs.LookPath("shellcheck")
+	if err != nil {
+		b.Skipf("shellcheck is not found: %s", err)
+	}
+	format := "{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\\n\\n{{$.Message}}\\n\\n```\\n{{$.Snippet}}\\n```\\n\\n{{end}}"
+
+	// Workflow files for this repository
+	ours := []string{}
+	{
+		d := filepath.Join(".github", "workflows")
+		es, err := os.ReadDir(d)
+		if err != nil {
+			panic(err)
+		}
+		for _, e := range es {
+			ours = append(ours, filepath.Join(d, e.Name()))
+		}
+	}
+
+	bms := []struct {
+		what       string
+		files      []string
+		shellcheck string
+		format     string
+	}{
+		{
+			what:  "minimal",
+			files: []string{min},
+		},
+		{
+			what:  "minimal",
+			files: []string{min, min, min, min, min},
+		},
+		{
+			what:  "minimal",
+			files: []string{min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min},
+		},
+		{
+			what: "minimal",
+			files: []string{
+				min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min,
+				min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min,
+			},
+		},
+		{
+			what:  "small",
+			files: []string{small},
+		},
+		{
+			what:  "smalls",
+			files: []string{small, small, small},
+		},
+		{
+			what:  "many-smalls",
+			files: []string{small, small, small, small, small, small, small, small, small, small},
+		},
+		{
+			what:  "large",
+			files: []string{large},
+		},
+		{
+			what:  "larges",
+			files: []string{large, large, large},
+		},
+		{
+			what:  "many-larges",
+			files: []string{large, large, large, large, large, large, large, large, large, large},
+		},
+		{
+			what:       "small",
+			files:      []string{small},
+			shellcheck: shellcheck,
+		},
+		{
+			what:       "smalls",
+			files:      []string{small, small, small},
+			shellcheck: shellcheck,
+		},
+		{
+			what:       "many-smalls",
+			files:      []string{small, small, small, small, small, small, small, small, small, small},
+			shellcheck: shellcheck,
+		},
+		{
+			what:       "script",
+			files:      []string{scripts},
+			shellcheck: shellcheck,
+		},
+		{
+			what:       "scripts",
+			files:      []string{scripts, scripts, scripts},
+			shellcheck: shellcheck,
+		},
+		{
+			what:       "many-scripts",
+			files:      []string{scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts},
+			shellcheck: shellcheck,
+		},
+		{
+			what:   "many-smalls",
+			files:  []string{small, small, small, small, small, small, small, small, small, small},
+			format: format,
+		},
+		{
+			what:  "our workflows",
+			files: ours,
+		},
+	}
+
+	for _, bm := range bms {
+		sc := ""
+		if bm.shellcheck != "" {
+			sc = "--shellcheck"
+		}
+		fm := ""
+		if bm.format != "" {
+			fm = "--format"
+		}
+		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				opts := LinterOptions{
+					Shellcheck: bm.shellcheck,
+					Format:     bm.format,
+				}
+
+				l, err := NewLinter(io.Discard, &opts)
+				if err != nil {
+					b.Fatal(err)
+				}
+				l.defaultConfig = withoutMissingTimeout(&Config{})
+
+				errs, err := l.LintFiles(bm.files, proj)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if len(errs) > 0 {
+					b.Fatal("some error occurred:", errs)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkLintWorkflowContent(b *testing.B) {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	proj := &Project{root: dir}
+
+	// Measure performance of traversing with checks except for external process rules (shellcheck, pyflakes)
+	// Reading file content is not included in benchmark measurement.
+
+	for _, name := range []string{"minimal", "small", "large"} {
+		var f string
+		switch name {
+		case "minimal":
+			f = filepath.Join(dir, "testdata", "bench", "minimal.yaml")
+		case "small":
+			f = filepath.Join(dir, "testdata", "bench", "small.yaml")
+		case "large":
+			f = filepath.Join(dir, "testdata", "bench", "many_scripts.yaml")
+		}
+		content, err := os.ReadFile(f)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.Run(name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				opts := LinterOptions{}
+				l, err := NewLinter(io.Discard, &opts)
+				if err != nil {
+					b.Fatal(err)
+				}
+				l.defaultConfig = withoutMissingTimeout(&Config{})
+				errs, err := l.Lint(f, content, proj)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if len(errs) > 0 {
+					b.Fatal("some error occurred:", errs)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkExamplesLintFiles(b *testing.B) {
+	dir, files, err := testFindAllWorkflowsInDir("examples")
+	if err != nil {
+		panic(err)
+	}
+
+	proj := &Project{root: dir}
+	shellcheck, err := execabs.LookPath("shellcheck")
+	if err != nil {
+		b.Skipf("shellcheck is not found: %s", err)
+	}
+	pyflakes, err := execabs.LookPath("pyflakes")
+	if err != nil {
+		b.Skipf("pyflakes is not found: %s", err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		opts := LinterOptions{
+			Shellcheck: shellcheck,
+			Pyflakes:   pyflakes,
+		}
+
+		l, err := NewLinter(io.Discard, &opts)
+		if err != nil {
+			b.Fatal(err)
+		}
+		l.defaultConfig = withoutMissingTimeout(&Config{})
+
+		errs, err := l.LintFiles(files, proj)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if len(errs) == 0 {
+			b.Fatal("no error found")
+		}
+	}
+}
+
+func BenchmarkLintRepository(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		opts := LinterOptions{}
+		l, err := NewLinter(io.Discard, &opts)
+		if err != nil {
+			b.Fatal(err)
+		}
+		errs, err := l.LintRepository(".")
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(errs) > 0 {
+			b.Fatal(errs)
+		}
+	}
+}
+
+func TestLinterGlobalConfigFallback(t *testing.T) {
+	const wf = `on: push
+jobs:
+  test:
+    runs-on: my-custom-runner
+    steps:
+      - run: echo hi
+`
+	// Path outside any Git repository so that no repository config is found
+	path := filepath.Join(t.TempDir(), "no-such-workflow.yaml")
+
+	mentionsLabel := func(errs []*Error) bool {
+		for _, e := range errs {
+			if strings.Contains(e.Message, "my-custom-runner") {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Without any config, the label is unknown
+	linter, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	errs, err := linter.Lint(path, []byte(wf), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mentionsLabel(errs) {
+		t.Fatalf("wanted an unknown-label error without global config but got: %v", errs)
+	}
+
+	// With a global config listing the label, the error is suppressed
+	linter, err = NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	linter.globalConfig = &Config{}
+	linter.globalConfig.SelfHostedRunner.Labels = []string{"my-custom-runner"}
+	errs, err = linter.Lint(path, []byte(wf), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mentionsLabel(errs) {
+		t.Fatalf("global config should have suppressed the unknown-label error but got: %v", errs)
+	}
+}
+
+func TestLinterConfigFilePriorityOverGlobalConfig(t *testing.T) {
+	const wf = `on: push
+jobs:
+  test:
+    runs-on: my-custom-runner
+    steps:
+      - run: echo hi
+`
+	path := filepath.Join(t.TempDir(), "no-such-workflow.yaml")
+
+	linter, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The config from --config-file lists no labels, so the label must remain
+	// unknown even though the global config lists it
+	linter.defaultConfig = withoutMissingTimeout(&Config{})
+	linter.globalConfig = &Config{}
+	linter.globalConfig.SelfHostedRunner.Labels = []string{"my-custom-runner"}
+
+	errs, err := linter.Lint(path, []byte(wf), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range errs {
+		if strings.Contains(e.Message, "my-custom-runner") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("label should remain unknown since --config-file takes priority over global config but got: %v", errs)
+	}
+}
+
+func TestLinterGenerateDefaultConfigNewNameAndConflicts(t *testing.T) {
+	// A new project gets the config file under the name of this project
+	root := t.TempDir()
+	testEnsureDotGitDir(root)
+	if err := os.MkdirAll(filepath.Join(root, ".github", "workflows"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := &bytes.Buffer{}
+	l, err := NewLinter(out, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.GenerateDefaultConfig(root); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(root, ".github", "jactionlint.yaml")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("default config was not generated at %q: %v", want, err)
+	}
+
+	// Config files under the old names are also treated as existing
+	for _, n := range []string{"jactionlint.yaml", "jactionlint.yml", "actionlint.yaml", "actionlint.yml"} {
+		root := t.TempDir()
+		testEnsureDotGitDir(root)
+		dir := filepath.Join(root, ".github")
+		if err := os.MkdirAll(filepath.Join(dir, "workflows"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("{}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		l, err := NewLinter(io.Discard, &LinterOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = l.GenerateDefaultConfig(root)
+		if err == nil || !strings.Contains(err.Error(), "config file already exists at") {
+			t.Errorf("%s: unexpected result: %v", n, err)
+		}
+	}
+}
+
+// TestNewLinterNilOptions: nil options are the zero value.
+func TestNewLinterNilOptions(t *testing.T) {
+	src := []byte("on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ foo }}\n")
+	lint := func(opts *LinterOptions) []string {
+		l, err := NewLinter(io.Discard, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		errs, err := l.Lint("w.yml", src, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ret []string
+		for _, e := range errs {
+			ret = append(ret, e.Error())
+		}
+		return ret
+	}
+	have, want := lint(nil), lint(&LinterOptions{})
+	if len(want) == 0 {
+		t.Fatal("the source should have findings")
+	}
+	if !slices.Equal(have, want) {
+		t.Errorf("nil options: want %q, have %q", want, have)
+	}
+}

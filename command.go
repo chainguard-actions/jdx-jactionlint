@@ -1,0 +1,520 @@
+package jactionlint
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"runtime"
+	"runtime/debug"
+	"strings"
+)
+
+// These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually
+var (
+	version       = ""
+	installedFrom = "installed by building from source"
+)
+
+const (
+	// ExitStatusSuccessNoProblem is the exit status when the command ran successfully with no problem found.
+	ExitStatusSuccessNoProblem = 0
+	// ExitStatusSuccessProblemFound is the exit status when the command ran successfully with some problem found.
+	ExitStatusSuccessProblemFound = 1
+	// ExitStatusInvalidCommandOption is the exit status when parsing command line options failed or the value of
+	// an option is invalid (an unknown --profile, --format or --min-severity, a broken --ignore regular expression).
+	ExitStatusInvalidCommandOption = 2
+	// ExitStatusFailure is the exit status when the command stopped due to some fatal error while checking workflows
+	// (no project, an unreadable file or config).
+	ExitStatusFailure = 3
+)
+
+func getCommandVersion() string {
+	if version != "" {
+		return version
+	}
+
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" {
+		return "unknown" // Reaches only when jactionlint package is built outside module
+	}
+
+	return info.Main.Version
+}
+
+// Command represents entire jactionlint command. Given stdin/stdout/stderr are used for input/output.
+type Command struct {
+	// Stdin is a reader to read input from stdin
+	Stdin io.Reader
+	// Stdout is a writer to write output to stdout
+	Stdout io.Writer
+	// Stderr is a writer to write output to stderr
+	Stderr io.Writer
+
+	// onRulesCreated is passed to LinterOptions.OnRulesCreated. Tests use it to add rules with fixes.
+	onRulesCreated func([]Rule) []Rule
+}
+
+// usageError is an error caused by the value of a command line flag (--format, --ignore, ...). The command exits
+// with ExitStatusInvalidCommandOption for it, like it does for a value which it validates itself (--profile).
+type usageError struct{ err error }
+
+func (e *usageError) Error() string { return e.err.Error() }
+func (e *usageError) Unwrap() error { return e.err }
+
+// fixRequest is what --fix, --diff and --fix-rules ask for.
+type fixRequest struct {
+	mode   FixMode
+	diff   bool
+	rules  []string
+	result *FixResult
+}
+
+func (cmd *Command) runLinter(args []string, opts *LinterOptions, initConfig, migrateConfig, migrateIgnores, exportFacts bool, suggest *TimeoutOptions, fix *fixRequest, baselineWrite *optionalValueFlag, onlineFailed *int, onlineReport string) ([]*Error, error) {
+	l, err := NewLinter(cmd.Stdout, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if l.OnlineFailed() {
+			*onlineFailed = l.OnlineSkipped()
+		}
+		if onlineReport != "" {
+			if err := l.writeOnlineReport(onlineReport); err != nil {
+				fmt.Fprintf(cmd.Stderr, "could not write --online-report: %v\n", err)
+			}
+		}
+	}()
+
+	if initConfig {
+		return nil, l.GenerateDefaultConfig("")
+	}
+	if migrateConfig {
+		return nil, l.MigrateConfig("")
+	}
+
+	if exportFacts {
+		if suggest != nil {
+			return nil, &usageError{errors.New("--export-facts and --suggest-timeouts print different documents, so they cannot be combined")}
+		}
+		if len(args) == 1 && args[0] == "-" {
+			return nil, &usageError{errors.New("--export-facts cannot be used with stdin because the facts are about the files of a repository")}
+		}
+		if fix.mode != 0 || baselineWrite.set || migrateIgnores {
+			return nil, &usageError{errors.New("--export-facts cannot be combined with --fix, --diff, --baseline-write or --migrate-ignores: it only reads")}
+		}
+		facts, err := l.ExportFacts(args, nil)
+		if err != nil {
+			return nil, err
+		}
+		b, err := facts.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		_, err = cmd.Stdout.Write(b)
+		return nil, err
+	}
+
+	if suggest != nil {
+		if len(args) == 1 && args[0] == "-" {
+			return nil, &usageError{errors.New("--suggest-timeouts cannot be used with stdin because the report is about the workflows of a repository")}
+		}
+		if fix.mode != 0 || baselineWrite.set || migrateIgnores {
+			return nil, &usageError{errors.New("--suggest-timeouts cannot be combined with --fix, --diff, --baseline-write or --migrate-ignores: it only reads")}
+		}
+		if opts.Format != "" && opts.Format != FormatText && opts.Format != FormatJSON {
+			return nil, &usageError{errors.New("--suggest-timeouts prints the formats text and json only")}
+		}
+		rep, err := l.SuggestTimeouts(args, nil, *suggest)
+		if err != nil {
+			return nil, err
+		}
+		if opts.Format == FormatJSON {
+			b, err := rep.JSON()
+			if err != nil {
+				return nil, err
+			}
+			_, err = cmd.Stdout.Write(b)
+			return nil, err
+		}
+		return nil, rep.WriteText(cmd.Stdout)
+	}
+
+	if baselineWrite.set {
+		if len(args) == 1 && args[0] == "-" {
+			return nil, &usageError{errors.New("--baseline-write cannot be used with stdin because the baseline would not know the file")}
+		}
+		if fix.mode != 0 {
+			return nil, &usageError{errors.New("--baseline-write cannot be combined with --fix")}
+		}
+		if args == nil {
+			args = []string{}
+		}
+		res, err := l.WriteBaseline(args, baselineWrite.value)
+		if err != nil {
+			return nil, err
+		}
+		state := "Wrote"
+		if !res.Changed {
+			state = "Baseline is up to date:"
+		}
+		fmt.Fprintf(cmd.Stdout, "%s %s for %s in %s\n", state, countNoun(res.Entries, "entry"), countNoun(res.Files, "file"), displayPath(opts.WorkingDir, res.Path))
+		if !res.Applied {
+			// A plain run does not read the baseline unless the configuration or --baseline says so
+			fmt.Fprintf(cmd.Stdout, "A plain run does not use the baseline yet. Pass --baseline, or put this line in %s so that every run and hook does:\n\n  baseline: %s\n", res.ConfigFile, res.ConfigValue)
+		}
+		return nil, nil
+	}
+	if migrateIgnores {
+		return nil, l.MigrateIgnores(args)
+	}
+
+	if fix.mode != 0 {
+		if len(args) == 1 && args[0] == "-" {
+			return nil, &usageError{errors.New("--fix cannot be used with stdin because the fixed file would not be saved")}
+		}
+		fo := FixOptions{Mode: fix.mode, Rules: fix.rules, DryRun: fix.diff}
+		var res *FixResult
+		if len(args) == 0 {
+			res, err = l.FixRepositoryWithOptions("", fo)
+		} else {
+			res, err = l.FixFilesWithOptions(args, nil, fo)
+		}
+		if err != nil {
+			return nil, err
+		}
+		fix.result = res
+		return res.Errors, nil
+	}
+
+	if len(args) == 0 {
+		return l.LintRepository("")
+	}
+
+	if len(args) == 1 && args[0] == "-" {
+		return l.LintStdin(cmd.Stdin)
+	}
+
+	return l.LintFiles(args, nil)
+}
+
+// Main is main function of jactionlint. It takes command line arguments as string slice and returns
+// exit status. The args should be entire arguments including the program name, usually given via
+// os.Args.
+func (cmd *Command) Main(args []string) int {
+	f := newCommandFlags()
+	if err := f.parse(args[1:]); err != nil {
+		fmt.Fprintf(cmd.Stderr, "jactionlint: %s (try --help)\n", err)
+		return ExitStatusInvalidCommandOption
+	}
+	if f.help {
+		printHelp(cmd.Stdout)
+		return ExitStatusSuccessNoProblem
+	}
+	opts := f.opts
+	flags := f.fs
+	ver := f.ver
+	minSeverity, profileName, strictExit := f.minSeverity, f.profileName, f.strictExit
+	baseline, baselineWrite := f.baseline, f.baselineWrite
+	diff, fix := f.diff, f.fix
+	online, onlineAllow, onlineDeny := f.online, f.onlineAllow, f.onlineDeny
+	onlineTTL, onlineMaxWait := f.onlineTTL, f.onlineMaxWait
+
+	if ver {
+		fmt.Fprintf(
+			cmd.Stdout,
+			"%s\n%s\nbuilt with %s compiler for %s/%s\n",
+			getCommandVersion(),
+			installedFrom,
+			runtime.Version(),
+			runtime.GOOS,
+			runtime.GOARCH,
+		)
+		return ExitStatusSuccessNoProblem
+	}
+
+	if f.listRules {
+		if err := writeRuleList(cmd.Stdout, opts.Format); err != nil {
+			fmt.Fprintln(cmd.Stderr, err)
+			return ExitStatusInvalidCommandOption
+		}
+		return ExitStatusSuccessNoProblem
+	}
+	if f.printConfigSchema || f.printOutputSchema || f.printFactsSchema {
+		if n := countTrue(f.printConfigSchema, f.printOutputSchema, f.printFactsSchema); n > 1 {
+			fmt.Fprintln(cmd.Stderr, "--print-config-schema, --print-output-schema and --print-facts-schema cannot be combined")
+			return ExitStatusInvalidCommandOption
+		}
+		schema := OutputSchema()
+		switch {
+		case f.printConfigSchema:
+			schema = ConfigSchema()
+		case f.printFactsSchema:
+			schema = FactsSchema()
+		}
+		if _, err := cmd.Stdout.Write(schema); err != nil {
+			fmt.Fprintf(cmd.Stderr, "could not write the schema: %v\n", err)
+			return ExitStatusFailure
+		}
+		return ExitStatusSuccessNoProblem
+	}
+	if flags.Changed("completion") {
+		if err := writeCompletion(cmd.Stdout, f.completion); err != nil {
+			fmt.Fprintln(cmd.Stderr, err)
+			return ExitStatusInvalidCommandOption
+		}
+		return ExitStatusSuccessNoProblem
+	}
+	if flags.Changed("explain") {
+		if err := explainRule(cmd.Stdout, f.explain); err != nil {
+			fmt.Fprintln(cmd.Stderr, err)
+			return ExitStatusInvalidCommandOption
+		}
+		return ExitStatusSuccessNoProblem
+	}
+
+	sev, err := ParseSeverity(minSeverity)
+	if err != nil || sev == SeverityOff {
+		fmt.Fprintf(cmd.Stderr, "invalid value %q for --min-severity. available values are \"info\", \"warn\" and \"error\"\n", minSeverity)
+		return ExitStatusInvalidCommandOption
+	}
+	opts.MinSeverity = sev
+	if profileName != "" {
+		p, err := ParseProfile(profileName)
+		if err != nil {
+			fmt.Fprintf(cmd.Stderr, "invalid value %q for --profile. available values are \"correctness\", \"default\" and \"pedantic\"\n", profileName)
+			return ExitStatusInvalidCommandOption
+		}
+		opts.Profile = p
+	}
+	if baselineWrite.set && (baseline.set || f.noBaseline || opts.BaselineCheck) {
+		fmt.Fprintln(cmd.Stderr, "--baseline-write cannot be combined with --baseline or --baseline-check: it records every finding")
+		return ExitStatusInvalidCommandOption
+	}
+	if f.noIgnores {
+		if baseline.set || opts.BaselineCheck || baselineWrite.set {
+			fmt.Fprintln(cmd.Stderr, "--no-ignores cannot be combined with --baseline, --baseline-check or --baseline-write: it turns the baseline off")
+			return ExitStatusInvalidCommandOption
+		}
+		opts.NoIgnores = true
+	}
+	if flags.Changed("changed-scope") && f.changedSince == "" {
+		fmt.Fprintln(cmd.Stderr, "--changed-scope can be used only with --changed-since")
+		return ExitStatusInvalidCommandOption
+	}
+	if flags.Changed("changed-since") {
+		if f.changedSince == "" {
+			fmt.Fprintln(cmd.Stderr, "--changed-since needs a revision, such as --changed-since origin/main")
+			return ExitStatusInvalidCommandOption
+		}
+		scope, err := ParseChangedScope(f.changedScope)
+		if err != nil {
+			fmt.Fprintln(cmd.Stderr, err)
+			return ExitStatusInvalidCommandOption
+		}
+		if f.suggestTimeouts {
+			fmt.Fprintln(cmd.Stderr, "--changed-since filters findings and --suggest-timeouts prints no findings, so they cannot be combined")
+			return ExitStatusInvalidCommandOption
+		}
+		if f.exportFacts {
+			fmt.Fprintln(cmd.Stderr, "--changed-since filters findings and --export-facts prints no findings but the facts of the whole repository, so they cannot be combined")
+			return ExitStatusInvalidCommandOption
+		}
+		if fix.mode != 0 || diff || baselineWrite.set || f.migrateIgnores || f.initConfig || f.migrateConfig {
+			fmt.Fprintln(cmd.Stderr, "--changed-since only filters what is reported, so it cannot be combined with --fix, --diff, --baseline-write, --migrate-ignores, --init-config or --migrate-config")
+			return ExitStatusInvalidCommandOption
+		}
+		if args := flags.Args(); len(args) == 1 && args[0] == "-" {
+			fmt.Fprintln(cmd.Stderr, "--changed-since cannot be used with stdin because there is no file to compare")
+			return ExitStatusInvalidCommandOption
+		}
+		opts.ChangedSince, opts.ChangedScope = f.changedSince, scope
+	}
+	for _, v := range f.selectRules {
+		opts.Select = append(opts.Select, strings.Split(v, ",")...)
+	}
+	if flags.Changed("select") && len(opts.Select) == 0 {
+		fmt.Fprintln(cmd.Stderr, "--select lists no rule ID")
+		return ExitStatusInvalidCommandOption
+	}
+	opts.Baseline = baseline.set
+	opts.BaselineFile = baseline.value
+	opts.NoBaseline = f.noBaseline
+	if baseline.set && f.noBaseline {
+		fmt.Fprintln(cmd.Stderr, "--baseline and --no-baseline cannot be combined")
+		return ExitStatusInvalidCommandOption
+	}
+	if online.set && f.noOnline {
+		fmt.Fprintln(cmd.Stderr, "--online and --no-online cannot be combined")
+		return ExitStatusInvalidCommandOption
+	}
+	// JACTIONLINT_ONLINE is the default of --online and --no-online: the command line wins. It lets a CI job turn the
+	// online checks on without a different command, for example `hk check` in a pre-commit hook and in CI
+	if !online.set && !f.noOnline {
+		set, off, mode, err := parseOnlineEnv(os.Getenv(onlineEnvName))
+		if err != nil {
+			fmt.Fprintln(cmd.Stderr, err)
+			return ExitStatusInvalidCommandOption
+		}
+		if set {
+			online = onlineFlag{set: true, mode: mode}
+		}
+		if off {
+			f.noOnline = true
+		}
+	}
+	var suggest *TimeoutOptions
+	if f.suggestTimeouts {
+		if f.noOnline {
+			fmt.Fprintln(cmd.Stderr, "--suggest-timeouts reads the runs of the workflows from GitHub, so it cannot be combined with --no-online or JACTIONLINT_ONLINE=0")
+			return ExitStatusInvalidCommandOption
+		}
+		if f.timeoutRuns < 1 || f.timeoutRuns > maxWorkflowRuns {
+			fmt.Fprintf(cmd.Stderr, "--timeout-history-runs must be between 1 and %d\n", maxWorkflowRuns)
+			return ExitStatusInvalidCommandOption
+		}
+		if !(f.timeoutBuffer >= 1) || math.IsInf(f.timeoutBuffer, 0) {
+			fmt.Fprintln(cmd.Stderr, "--timeout-buffer must be a number of at least 1")
+			return ExitStatusInvalidCommandOption
+		}
+		online.set = true
+		suggest = &TimeoutOptions{Runs: f.timeoutRuns, Buffer: f.timeoutBuffer}
+	} else if flags.Changed("timeout-history-runs") || flags.Changed("timeout-buffer") {
+		fmt.Fprintln(cmd.Stderr, "--timeout-history-runs and --timeout-buffer can be used only with --suggest-timeouts")
+		return ExitStatusInvalidCommandOption
+	}
+	opts.IgnorePatterns = f.ignorePats
+	// A command the user named must exist: the default is looked up on PATH and a missing one only costs a note
+	opts.ShellcheckRequired = flags.Changed("shellcheck") && opts.Shellcheck != ""
+	opts.PyflakesRequired = flags.Changed("pyflakes") && opts.Pyflakes != ""
+	opts.OnRulesCreated = cmd.onRulesCreated
+	opts.RunHints = !f.noHints && !HintsDisabledByEnv()
+	opts.LogWriter = cmd.Stderr
+	if flags.Changed("online-cache-ttl") {
+		opts.OnlineOptions.CacheTTL = &onlineTTL
+	}
+	if flags.Changed("online-github-com-fallback") {
+		v := f.onlineGitHubComFallback
+		opts.OnlineOptions.GitHubComFallback = &v
+	}
+	if flags.Changed("online-max-wait") {
+		opts.OnlineOptions.MaxRateLimitWait = &onlineMaxWait
+	}
+	if f.noOnline {
+		opts.OnlineOff = true
+	}
+	if online.set {
+		opts.Online = true
+		opts.OnlineOptions.Mode = online.mode
+		opts.OnlineOptions.ModeSet = true
+	}
+	if len(onlineAllow) > 0 {
+		opts.OnlineOptions.Allow = onlineAllow
+	}
+	if len(onlineDeny) > 0 {
+		opts.OnlineOptions.Deny = onlineDeny
+	}
+	if err := opts.OnlineOptions.validate(); err != nil {
+		fmt.Fprintf(cmd.Stderr, "invalid online option: %s\n", err)
+		return ExitStatusInvalidCommandOption
+	}
+	if opts.Online || opts.OnlineOptions.Mode != OnlineModeDefault {
+		// Stop the lookups, instead of killing the process in the middle of a cache write, on Ctrl-C
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		opts.Context = ctx
+	}
+
+	if f.color.set {
+		opts.Color = f.color.kind
+	}
+	if f.noColor {
+		opts.Color = ColorOptionKindNever
+	}
+
+	req := &fixRequest{mode: fix.mode, diff: diff}
+	if diff && req.mode == 0 {
+		req.mode = FixModeSafe
+	}
+	if f.fixRules != "" {
+		if req.mode == 0 {
+			fmt.Fprintln(cmd.Stderr, "--fix-rules can be used only with --fix or --diff")
+			return ExitStatusInvalidCommandOption
+		}
+		for _, id := range strings.Split(f.fixRules, ",") {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			if _, ok := ruleIndex[id]; !ok {
+				fmt.Fprintf(cmd.Stderr, "unknown rule ID %q in --fix-rules%s\n", id, suggestRuleID(id))
+				return ExitStatusInvalidCommandOption
+			}
+			req.rules = append(req.rules, id)
+		}
+		if len(req.rules) == 0 {
+			fmt.Fprintf(cmd.Stderr, "--fix-rules=%q lists no rule ID\n", f.fixRules)
+			return ExitStatusInvalidCommandOption
+		}
+	}
+	var onlineFailed int
+	errs, err := cmd.runLinter(flags.Args(), &opts, f.initConfig, f.migrateConfig, f.migrateIgnores, f.exportFacts, suggest, req, &baselineWrite, &onlineFailed, f.onlineReport)
+	if err != nil {
+		fmt.Fprintln(cmd.Stderr, err.Error())
+		var ue *usageError
+		if errors.As(err, &ue) {
+			return ExitStatusInvalidCommandOption // the value of a flag is wrong, not the workflows
+		}
+		return ExitStatusFailure
+	}
+	if onlineFailed > 0 {
+		// Printed before the early return of a refused fix: the lookups were skipped either way
+		fmt.Fprintf(cmd.Stderr, "online=strict: %d GitHub lookups were skipped, so the online checks are incomplete\n", onlineFailed)
+	}
+	if req.result != nil && len(req.result.Failures) > 0 {
+		return ExitStatusFailure
+	}
+	if onlineFailed > 0 {
+		return ExitStatusFailure
+	}
+	if req.result != nil && diff && req.result.Diff != "" {
+		return ExitStatusSuccessProblemFound
+	}
+	return exitStatusOf(errs, strictExit)
+}
+
+// exitStatusOf returns the exit status for the errors found. Only errors of error level make the
+// status 1 unless strict is true, which counts every error.
+func exitStatusOf(errs []*Error, strict bool) int {
+	for _, e := range errs {
+		if strict || e.Severity >= SeverityError {
+			return ExitStatusSuccessProblemFound // Linter found some issues, yay!
+		}
+	}
+	return ExitStatusSuccessNoProblem
+}
+
+// displayPath shows a path relative to the working directory when it is inside it.
+func displayPath(wd, p string) string {
+	if wd == "" {
+		wd, _ = os.Getwd()
+	}
+	if r, err := filepath.Rel(wd, p); wd != "" && err == nil && !strings.HasPrefix(r, "..") {
+		return r
+	}
+	return p
+}
+
+func countTrue(bs ...bool) int {
+	n := 0
+	for _, b := range bs {
+		if b {
+			n++
+		}
+	}
+	return n
+}
