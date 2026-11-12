@@ -12,6 +12,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v2.3.0 | [`v2.3.0`](https://github.com/chainguard-actions/jdx-jactionlint/tree/v2.3.0) | [`a65ab04`](https://github.com/jdx/jactionlint/commit/a65ab044e916760429068fe5794b8306abdfcbb9) | [`HARDENING.md`](https://github.com/chainguard-actions/jdx-jactionlint/blob/v2.3.0/HARDENING.md) |
 | v2.4.0 | [`v2.4.0`](https://github.com/chainguard-actions/jdx-jactionlint/tree/v2.4.0) | [`baa8d68`](https://github.com/jdx/jactionlint/commit/baa8d685e2b27ff5821558c9eeabb2051c1da61b) | [`HARDENING.md`](https://github.com/chainguard-actions/jdx-jactionlint/blob/v2.4.0/HARDENING.md) |
 | v2.5.0 | [`v2.5.0`](https://github.com/chainguard-actions/jdx-jactionlint/tree/v2.5.0) | [`9e87e8f`](https://github.com/jdx/jactionlint/commit/9e87e8f34edfc00b849a27807e26eff9d00b936d) | [`HARDENING.md`](https://github.com/chainguard-actions/jdx-jactionlint/blob/v2.5.0/HARDENING.md) |
+| v2.6.0 | [`v2.6.0`](https://github.com/chainguard-actions/jdx-jactionlint/tree/v2.6.0) | [`72c0045`](https://github.com/jdx/jactionlint/commit/72c00452809bcca05b8bc12acdcf15dd7a9c1c5e) | [`HARDENING.md`](https://github.com/chainguard-actions/jdx-jactionlint/blob/v2.6.0/HARDENING.md) |
 
 ## Privacy
 
