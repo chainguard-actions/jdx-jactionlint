@@ -1,0 +1,1711 @@
+//go:build !js
+
+package jactionlint
+
+import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math/rand/v2"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+)
+
+const (
+	defaultGitHubAPIURL = "https://api.github.com"
+	// gitHubRequestTimeout bounds one request.
+	gitHubRequestTimeout = 20 * time.Second
+	// maxGitHubPages bounds how many pages of a list are read.
+	maxGitHubPages = 10
+	// maxGitHubBodyBytes bounds how much of an answer is read.
+	maxGitHubBodyBytes = 16 << 20
+	// maxTagDerefs bounds how many tag objects are followed to reach a commit.
+	maxTagDerefs = 5
+	// maxRateLimitWaits bounds how often one request waits for a primary rate limit to reset.
+	maxRateLimitWaits = 2
+	// backoffBase and backoffCap bound the exponential backoff between retries.
+	backoffBase = 500 * time.Millisecond
+	backoffCap  = 8 * time.Second
+	// unknownLimitWait is how long a rate limit of unknown length is assumed to last: GitHub asks
+	// to wait at least a minute when a secondary rate limit says nothing else.
+	unknownLimitWait = time.Minute
+	// maxAPIMessageBytes bounds the text of an API error message that is shown.
+	maxAPIMessageBytes = 200
+)
+
+// httpGitHubClient is the GitHubClient which talks to the GitHub REST API. It
+//
+//   - authenticates with the token it is given (see tokenDiscovery) and sends it only to its own API
+//     host, never over plain http except to the loopback address, and never prints it,
+//   - keeps answers in a diskCache: an answer younger than the TTL is used as is, an older one is
+//     revalidated with its ETag (a 304 answer does not count against the rate limit of an
+//     authenticated client). Answers are keyed by API host and token, but a public answer fetched
+//     without a token is also used by a client with one,
+//   - reads X-RateLimit-* and Retry-After. A rate limit which resets within MaxWait is waited for;
+//     one which resets later makes the requests fail at once (without a network call) with an
+//     error naming the reset time. Answers in the cache, even expired ones, are still used,
+//   - retries server errors (500, 502, 503, 504), secondary rate limits and a request which timed out once
+//     with exponential backoff and jitter, a bounded number of times,
+//   - in the offline mode never uses the network: only cached answers are returned.
+type httpGitHubClient struct {
+	base   *url.URL
+	hc     *http.Client
+	cache  *diskCache
+	ttl    time.Duration
+	sem    chan struct{}
+	notify func(msg string) // for notices which are not errors; can be nil
+	debug  func(format string, args ...any)
+	// graphql overrides the URL of the GraphQL API.
+	graphql string
+
+	offline     bool
+	retries     int
+	maxWait     time.Duration
+	tokenSource string
+	red         redactor
+
+	// Replaced by the tests to avoid real waiting.
+	now    func() time.Time
+	sleep  func(ctx context.Context, d time.Duration) error
+	jitter func(d time.Duration) time.Duration
+
+	mu          sync.Mutex
+	answers     OnlineAnswers
+	token       string
+	limit       *GitHubRateLimitError // set once the limit is reached
+	noticedAnon bool
+	noTokenHint string
+	// visibility remembers per repository ("owner/repo", lower case) whether it is public, as the answer of
+	// the repository endpoint said when it was last asked. A repository that is not in the map is unknown,
+	// which counts as private.
+	visibility map[string]visibilityFact
+}
+
+// visibilityFact is what the repository endpoint said about a repository, and when the server said it.
+type visibilityFact struct {
+	public bool
+	at     time.Time
+}
+
+// sharedVisibilityTTL bounds the age of the confirmation that a repository is public, for sharing an answer
+// between tokens and for serving a shared copy. It is deliberately short and independent of the TTL of the
+// cache: a repository can turn private at any time.
+const sharedVisibilityTTL = 5 * time.Minute
+
+// httpGitHubOptions configures newHTTPGitHubClient.
+type httpGitHubOptions struct {
+	// Token is the access token. Empty means unauthenticated.
+	Token string
+	// TokenSource says where the token came from (a variable name or a file), for messages.
+	TokenSource string
+	// BaseURL is the URL of the API.
+	BaseURL string
+	// CacheDir is the directory of the cache. Empty disables caching.
+	CacheDir string
+	// TTL is how long cached answers are used without revalidation.
+	TTL time.Duration
+	// Offline makes the client answer from the cache only.
+	Offline bool
+	// Retries is how often a retryable failure is repeated. Nil means defaultOnlineRetries.
+	Retries *int
+	// MaxWait is the longest wait for a rate limit. Nil means defaultOnlineMaxWait.
+	MaxWait *time.Duration
+	// Concurrency is the number of requests in flight at most. Zero means defaultOnlineInFlight.
+	Concurrency int
+	// HTTPClient is used instead of the default one when set.
+	HTTPClient *http.Client
+	// Notify receives notices such as "no token set".
+	Notify func(msg string)
+	// GraphQLURL is the URL of the GraphQL API. Empty derives it from BaseURL.
+	GraphQLURL string
+	// Debug receives a line for every request and cache hit. It can be nil.
+	Debug func(format string, args ...any)
+	// NoTokenHint replaces the list of places a token is looked for in the notice about unauthenticated requests.
+	NoTokenHint string
+}
+
+// newHTTPGitHubClient creates the client.
+func newHTTPGitHubClient(o httpGitHubOptions) (*httpGitHubClient, error) {
+	if o.BaseURL == "" {
+		o.BaseURL = defaultGitHubAPIURL
+	}
+	base, err := parseAPIURL(o.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+	hc := &http.Client{Timeout: gitHubRequestTimeout}
+	if o.HTTPClient != nil {
+		cp := *o.HTTPClient // Not modified: the caller may use it for something else
+		hc = &cp
+	}
+	// A request which carries the token is never redirected to another origin (see authRedirectPolicy)
+	hc.CheckRedirect = authRedirectPolicy(hc.CheckRedirect)
+	conc := o.Concurrency
+	if conc <= 0 {
+		conc = defaultOnlineInFlight
+	}
+	c := &httpGitHubClient{
+		base: base, hc: hc, ttl: o.TTL, token: o.Token, tokenSource: o.TokenSource, notify: o.Notify, debug: o.Debug,
+		sem: make(chan struct{}, min(conc, maxOnlineInFlight)), offline: o.Offline,
+		retries: defaultOnlineRetries, maxWait: defaultOnlineMaxWait,
+		now: time.Now, sleep: sleepContext, jitter: jitterBackoff, noTokenHint: o.NoTokenHint,
+	}
+	if o.Retries != nil {
+		c.retries = max(*o.Retries, 0)
+	}
+	if o.MaxWait != nil {
+		c.maxWait = max(*o.MaxWait, 0)
+	}
+	c.red.add(o.Token)
+	if c.token != "" && !tokenIsSafeToSend(base) {
+		c.token = ""
+		c.noticef("not sending the token to %s because it is not https", base.Host)
+	}
+	if o.GraphQLURL != "" {
+		if gu, err := url.Parse(o.GraphQLURL); err == nil && gu.Host == base.Host && gu.Scheme == base.Scheme && gu.User == nil {
+			c.graphql = o.GraphQLURL
+		} else {
+			c.noticef("ignoring GITHUB_GRAPHQL_URL: it is not on the host of the REST API (%s)", base.Host)
+		}
+	}
+	if o.CacheDir != "" {
+		c.cache = newDiskCache(o.CacheDir, 0)
+	}
+	return c, nil
+}
+
+func sleepContext(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return ctx.Err()
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// jitterBackoff returns a random duration in [d/2, d].
+func jitterBackoff(d time.Duration) time.Duration {
+	if d <= 1 {
+		return d
+	}
+	return d/2 + time.Duration(rand.Int64N(int64(d/2)+1))
+}
+
+// backoff is the wait before retry number attempt+1: 0.5s, 1s, 2s, ... up to 8s, with jitter.
+func (c *httpGitHubClient) backoff(attempt int) time.Duration {
+	d := backoffBase << min(attempt, 10)
+	return c.jitter(min(d, backoffCap))
+}
+
+// githubTokenFromEnv returns the token for the GitHub API from the environment.
+func githubTokenFromEnv() string {
+	for _, k := range []string{"GITHUB_TOKEN", "GH_TOKEN"} {
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// newDefaultGitHubClient creates the client used by the jactionlint command: the API URL and the token
+// come from the options and the environment and the cache is in the user cache directory.
+func newDefaultGitHubClient(o defaultClientOptions) (GitHubClient, error) {
+	apiURL := o.Options.APIURL
+	trusted := o.OptionsTrusted
+	if apiURL == "" {
+		apiURL = onlineAPIDefaults(os.Getenv)
+		trusted = true // The environment is the user's
+	}
+	base, err := parseAPIURL(orDefault(apiURL, defaultGitHubAPIURL))
+	if err != nil {
+		return nil, err
+	}
+	co := httpGitHubOptions{
+		BaseURL:     base.String(),
+		GraphQLURL:  os.Getenv("GITHUB_GRAPHQL_URL"),
+		CacheDir:    defaultGitHubCacheDir(),
+		TTL:         o.TTL,
+		Offline:     o.Options.Mode.Offline(),
+		Retries:     o.Options.Retries,
+		MaxWait:     o.Options.MaxRateLimitWait,
+		Concurrency: o.Options.Concurrency,
+		Notify:      o.Notify,
+		Debug:       o.Debug,
+	}
+	if !trusted {
+		// A repository chose the host: the GraphQL variable is the user's but only valid for its own host
+		co.GraphQLURL = ""
+	}
+	ctx := o.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	useGH := o.Options.GitHubCLI == nil || *o.Options.GitHubCLI
+	d := tokenDiscovery{
+		host: base.Host, dotCom: base.Host == "api.github.com", trusted: trusted,
+		tokenEnv: o.Options.TokenEnv, tokenFile: o.Options.TokenFile, useGH: useGH,
+		getenv: os.Getenv, readFile: readTokenFileLimited, runGH: runGHAuthToken,
+	}
+	d.host = ghHostname(base.Host)
+	tok, notices := d.discover(ctx)
+	for _, n := range notices {
+		if o.Notify != nil {
+			o.Notify(n)
+		}
+	}
+	co.Token, co.TokenSource = tok.token, tok.source
+	if o.Verbose != nil {
+		if tok.token != "" {
+			o.Verbose("online: using the token from %s for %s", tok.source, base.Host)
+		} else {
+			o.Verbose("online: no token for %s", base.Host)
+		}
+	}
+	primary, err := newHTTPGitHubClient(co)
+	if err != nil {
+		return nil, err
+	}
+	if o.Options.GitHubComFallback == nil || !*o.Options.GitHubComFallback {
+		return primary, nil
+	}
+	if base.Host == "api.github.com" {
+		note := o.Note
+		if note == nil {
+			note = o.Notify
+		}
+		if note != nil {
+			note("online-options.github-com-fallback has no effect: the API is api.github.com already")
+		}
+		return primary, nil
+	}
+	secondary, err := newGitHubComClient(ctx, o, co)
+	if err != nil {
+		return nil, err
+	}
+	if o.Verbose != nil {
+		o.Verbose("online: repositories which %s does not have are looked up on api.github.com", base.Host)
+	}
+	return newFallbackGitHubClient(primary, secondary), nil
+}
+
+// newGitHubComClient creates the client for api.github.com of the fallback of an Enterprise Server. co are the
+// options of the client of the Server, which it shares everything with but the host, the token and the cache
+// keys (answers are kept per host). The token of the Server is never used for it: $GITHUB_TOKEN and $GH_TOKEN are
+// the token of the Server there, so the token is $GITHUB_COM_TOKEN (or the variable or file of the options, or
+// "gh auth token --hostname github.com").
+func newGitHubComClient(ctx context.Context, o defaultClientOptions, co httpGitHubOptions) (*httpGitHubClient, error) {
+	useGH := o.Options.GitHubCLI == nil || *o.Options.GitHubCLI
+	d := tokenDiscovery{
+		host: "github.com", dotCom: true, trusted: true,
+		tokenEnv: o.Options.GitHubComTokenEnv, tokenFile: o.Options.GitHubComTokenFile, useGH: useGH,
+		envNames: []string{githubComTokenEnv},
+		getenv:   os.Getenv, readFile: readTokenFileLimited, runGH: runGHAuthTokenOfTheKeyring,
+	}
+	tok, notices := d.discover(ctx)
+	for _, n := range notices {
+		if o.Notify != nil {
+			o.Notify("api.github.com: " + n)
+		}
+	}
+	co.BaseURL, co.GraphQLURL = gitHubComAPIURL, ""
+	co.Token, co.TokenSource = tok.token, tok.source
+	co.NoTokenHint = githubComTokenEnv + " or gh auth login --hostname github.com"
+	if o.Verbose != nil {
+		if tok.token != "" {
+			o.Verbose("online: using the token from %s for api.github.com", tok.source)
+		} else {
+			o.Verbose("online: no token for api.github.com")
+		}
+	}
+	return newHTTPGitHubClient(co)
+}
+
+// gitHubComAPIURL is the API of the fallback. The tests point it at a server of their own.
+var gitHubComAPIURL = defaultGitHubAPIURL
+
+// githubComTokenEnv is the variable which holds the token for api.github.com when the API is an Enterprise Server.
+const githubComTokenEnv = "GITHUB_COM_TOKEN"
+
+func orDefault(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
+}
+
+// httpResponse is one answer, read completely.
+type httpResponse struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+// httpAnswer is the answer of one request.
+type httpAnswer struct {
+	status  int
+	body    []byte
+	link    string
+	fetched time.Time // when the answer came from the server (zero for a 404, which has no body to date)
+}
+
+func (c *httpGitHubClient) currentToken() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.token
+}
+
+func (c *httpGitHubClient) rateLimited() *GitHubRateLimitError {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.limit != nil && !c.limit.Reset.IsZero() && c.now().After(c.limit.Reset) {
+		c.limit = nil // The window has passed
+	}
+	return c.limit
+}
+
+func (c *httpGitHubClient) setRateLimited(reset time.Time, authenticated bool) *GitHubRateLimitError {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.limit = &GitHubRateLimitError{Reset: reset, Authenticated: authenticated, TokenHint: c.noTokenHint, now: c.now}
+	return c.limit
+}
+
+// answerFromEntry converts a cache entry to an answer.
+func answerFromEntry(e *cacheEntry) *httpAnswer {
+	return &httpAnswer{status: e.Status, body: e.Body, link: e.Link, fetched: e.Fetched}
+}
+
+// scope tells apart the cached answers of different API hosts and credentials: private repositories
+// answer differently to different tokens.
+func (c *httpGitHubClient) scope(token string) string {
+	if token == "" {
+		return c.base.Host + "|anonymous"
+	}
+	return c.base.Host + "|token:" + cacheKey("token", token)
+}
+
+// lookup finds the cached answer of a request. A public answer fetched with another token (status 200)
+// also serves a client with a token, since a token cannot make public data differ; a cached "not
+// found" does not, because the token may see more. A copy in the shared slot that a token made is served
+// only while its confirmation that the repository is public is fresh, and not at all once this run saw the
+// repository turn private (see shareIfPublic).
+func (c *httpGitHubClient) lookup(u, token string) (entry *cacheEntry, key string) {
+	key = cacheKey(c.scope(token), u)
+	return c.findCached(key, u, token, c.repoID(u)), key
+}
+
+// sharedScope is the slot of the copies that a token made for everybody (see shareIfPublic). It is not the
+// anonymous slot: that one holds what the server answered to a request without a token, and a copy of an
+// answer of a token must neither replace nor hide it, nor take it along when it is purged.
+func (c *httpGitHubClient) sharedScope() string {
+	return c.base.Host + "|shared"
+}
+
+// findCached looks up the request named name (key is where the client's own answers are kept). The order:
+// the slot of the client; for a client with a token the answers fetched without one (public by definition;
+// only a 200 serves a token, which may see more than an anonymous "not found"); then the shared copies,
+// while they are usable.
+func (c *httpGitHubClient) findCached(key, name, token, id string) *cacheEntry {
+	if e := c.cache.get(key, name); e != nil && c.sharedUsable(e, id) {
+		return e
+	}
+	if token != "" {
+		if e := c.cache.get(cacheKey(c.scope(""), name), name); e != nil && e.Status == http.StatusOK && c.sharedUsable(e, id) {
+			return e
+		}
+	}
+	if e := c.cache.get(cacheKey(c.sharedScope(), name), name); e != nil && e.Status == http.StatusOK && c.sharedUsable(e, id) {
+		return e
+	}
+	return nil
+}
+
+// repoID is the lower case "owner/repo" a URL of the API is about, or "".
+func (c *httpGitHubClient) repoID(u string) string {
+	if owner, repo, _, ok := c.repoOf(u); ok {
+		return strings.ToLower(owner + "/" + repo)
+	}
+	return ""
+}
+
+// sharedUsable reports whether an entry of the shared slot may be served. An answer fetched without a token is
+// public by definition. A copy made from the answer of a token is public only as long as the repository was
+// confirmed public a short time ago, and this run has not seen it turn private.
+func (c *httpGitHubClient) sharedUsable(e *cacheEntry, id string) bool {
+	if e.Shared.IsZero() {
+		return true
+	}
+	if age := c.now().Sub(e.Shared); age >= sharedVisibilityTTL || age < -time.Minute {
+		return false
+	}
+	if f, known := c.visibilityOf(id); known && !f.public {
+		return false
+	}
+	return true
+}
+
+// get fetches an API URL (a path relative to the API, or an absolute URL of the same host).
+func (c *httpGitHubClient) get(ctx context.Context, target string) (*httpAnswer, error) {
+	return c.getOpt(ctx, target, false)
+}
+
+// getOpt is get; with revalidate a cached answer is never served without asking the server (a conditional
+// request, so that an unchanged answer costs no quota), whatever its age.
+func (c *httpGitHubClient) getOpt(ctx context.Context, target string, revalidate bool) (*httpAnswer, error) {
+	return c.fetch(ctx, target, revalidate, false)
+}
+
+// fetch is getOpt; with immutable the answer is about something which can never change (a file at a full
+// commit SHA), so a cached 200 answer is used whatever its age, unless the TTL is zero, which asks for
+// every answer to be checked.
+func (c *httpGitHubClient) fetch(ctx context.Context, target string, revalidate, immutable bool) (*httpAnswer, error) {
+	u := target
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		u = c.base.String() + target
+	}
+	pu, err := url.Parse(u)
+	if err != nil || !sameOrigin(pu, c.base) {
+		return nil, fmt.Errorf("refusing to request %q: not an URL of the GitHub API", c.red.redact(strings.SplitN(target, "?", 2)[0]))
+	}
+	if err := c.checkAPIPath(pu); err != nil {
+		return nil, fmt.Errorf("refusing to request %q: %w", target, err)
+	}
+
+	token := c.currentToken()
+	entry, key := c.lookup(u, token)
+	if entry != nil && !revalidate {
+		age := c.now().Sub(entry.Fetched)
+		switch {
+		case c.offline || (c.ttl > 0 && age < c.ttl):
+			c.logf("GET %s: from the cache", target)
+			c.noteAnswer(answerCached, entry.Fetched)
+			return answerFromEntry(entry), nil
+		case immutable && c.ttl > 0 && entry.Status == http.StatusOK:
+			c.logf("GET %s: from the cache (it cannot change)", target)
+			c.noteAnswer(answerImmutable, entry.Fetched)
+			return answerFromEntry(entry), nil
+		}
+	}
+	if c.offline {
+		return nil, fmt.Errorf("%s: %w", strings.SplitN(target, "?", 2)[0], ErrGitHubNotCached)
+	}
+	if rl, err := c.waitOutRateLimit(ctx); err != nil {
+		return nil, err
+	} else if rl != nil {
+		if entry != nil {
+			c.noteAnswer(answerStale, entry.Fetched)
+			return answerFromEntry(entry), nil // Stale data is better than none
+		}
+		return nil, rl
+	}
+
+	ans, err := c.doLimited(ctx, u, token, entry, key)
+	if err != nil && entry != nil && errors.Is(err, ErrGitHubRateLimited) {
+		c.noteAnswer(answerStale, entry.Fetched)
+		return answerFromEntry(entry), nil
+	}
+	if err == nil {
+		c.noteAnswer(answerNetwork, time.Time{})
+	}
+	if token != "" && !revalidate {
+		c.afterTokenRequest(ctx, u, token, key, ans, err)
+	}
+	return ans, err
+}
+
+// afterTokenRequest is what follows a request made with a token: a good answer may be shared (see
+// shareIfPublic), and a repository endpoint that no longer answers the token purges what was shared about the
+// repository. do turns a 401 (retried without the token, which is dropped) and a 403 that is no rate limit
+// (an error) into something else than a status, so these are recognized here as well as the 404.
+func (c *httpGitHubClient) afterTokenRequest(ctx context.Context, u, token, key string, ans *httpAnswer, err error) {
+	owner, repo, self, ok := c.repoOf(u)
+	if !ok {
+		return
+	}
+	var se *GitHubStatusError
+	denied := err != nil && errors.As(err, &se) && (se.Status == http.StatusForbidden || se.Status == http.StatusUnauthorized)
+	if err == nil {
+		switch {
+		case c.currentToken() != token:
+			denied = self // the token was rejected (401) and dropped: what it vouched for is not vouched for any more
+		case ans.status == http.StatusNotFound || ans.status == http.StatusForbidden || ans.status == http.StatusUnauthorized:
+			denied = self
+		case ans.status == http.StatusOK:
+			c.shareIfPublic(ctx, u, key, owner, repo, self)
+			return
+		}
+	}
+	if denied && self {
+		// Not visible to this token any more: whatever was shared about it goes
+		c.setVisibility(strings.ToLower(owner+"/"+repo), false, c.now())
+		c.cache.remove(cacheKey(c.sharedScope(), u))
+	}
+}
+
+// doLimited sends the request while holding one of the slots for concurrent requests.
+func (c *httpGitHubClient) doLimited(ctx context.Context, u, token string, entry *cacheEntry, key string) (*httpAnswer, error) {
+	select {
+	case c.sem <- struct{}{}:
+		defer func() { <-c.sem }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return c.do(ctx, u, token, entry, key, false, false)
+}
+
+// repoOf tells which repository a URL of the API is about, and whether it is the repository endpoint itself
+// (/repos/{owner}/{repo}) and not something below it.
+func (c *httpGitHubClient) repoOf(u string) (owner, repo string, self, ok bool) {
+	pu, err := url.Parse(u)
+	if err != nil {
+		return "", "", false, false
+	}
+	rest, found := strings.CutPrefix(pu.EscapedPath(), strings.TrimRight(c.base.EscapedPath(), "/")+"/repos/")
+	if !found {
+		return "", "", false, false
+	}
+	segs := strings.Split(rest, "/")
+	if len(segs) < 2 || !validGitHubOwner(segs[0]) || !validGitHubRepo(segs[1]) {
+		return "", "", false, false
+	}
+	return segs[0], segs[1], len(segs) == 2, true
+}
+
+// repoBodyPublic reports whether the answer of the repository endpoint says the repository is public. An
+// answer that does not say so, or says it is private or internal, is not.
+func repoBodyPublic(body []byte) bool {
+	var r struct {
+		Private    *bool  `json:"private"`
+		Visibility string `json:"visibility"`
+	}
+	return json.Unmarshal(body, &r) == nil && r.Private != nil && !*r.Private && (r.Visibility == "" || r.Visibility == "public")
+}
+
+// shareIfPublic makes the answer which was just stored under the key of the token available to every other
+// token, when it is public data. The cache is keyed by credentials because a private repository answers
+// differently to different tokens, and an answer fetched with a token is not known to be public: a token
+// of another job of the same workflow (every CI job has its own GITHUB_TOKEN) would never find it.
+//
+// The invariant that keeps private answers private, and fails closed: an answer enters the shared slot (the
+// one of requests without a token), and is served from it, only if the fact "the repository is public" is
+// fresh, that is the server said so at most sharedVisibilityTTL ago, in this run or in a revalidation made
+// now. A fact that is stale (an answer of the repository endpoint that came out of the cache), unknown, or
+// that could not be refreshed means per-token only, and an older shared copy of the request is removed. An
+// observation of a private, internal, forbidden or missing repository removes the shared copy at once and
+// blocks serving the others of that repository for the rest of the run; the copies carry the time of their
+// confirmation (cacheEntry.Shared) so that they expire on their own in the runs that did not see it. A
+// "not found" is never shared (a token may see more).
+func (c *httpGitHubClient) shareIfPublic(ctx context.Context, u, key, owner, repo string, self bool) {
+	if c.cache == nil || c.offline {
+		return // offline nothing can be confirmed
+	}
+	e := c.cache.get(key, u)
+	if e == nil || e.Status != http.StatusOK {
+		return
+	}
+	id := strings.ToLower(owner + "/" + repo)
+	anon := cacheKey(c.sharedScope(), u)
+	if self {
+		c.setVisibility(id, repoBodyPublic(e.Body), e.Fetched)
+	}
+	if !c.visibilityCurrent(id) {
+		if c.rateLimited() != nil {
+			return // sharing is an optimization: it never waits for the limit
+		}
+		path, err := repoURL(owner, repo)
+		if err != nil {
+			return
+		}
+		ans, err := c.getOpt(ctx, path, true)
+		if err != nil {
+			c.cache.remove(anon) // could not refresh: unknown
+			return
+		}
+		// An answer that came from a stale entry (the limit was reached meanwhile) is not a confirmation
+		c.setVisibility(id, ans.status == http.StatusOK && repoBodyPublic(ans.body), ans.fetched)
+	}
+	if f, _ := c.visibilityOf(id); f.public && c.visibilityCurrent(id) {
+		shared := *e
+		shared.Shared = f.at
+		c.cache.put(anon, &shared)
+	} else {
+		c.cache.remove(anon)
+	}
+}
+
+func (c *httpGitHubClient) visibilityOf(id string) (f visibilityFact, known bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	f, known = c.visibility[id]
+	return f, known
+}
+
+// visibilityCurrent reports whether a recent answer of the server tells the visibility of the repository.
+func (c *httpGitHubClient) visibilityCurrent(id string) bool {
+	f, known := c.visibilityOf(id)
+	age := c.now().Sub(f.at)
+	return known && !f.at.IsZero() && age < sharedVisibilityTTL && age > -time.Minute
+}
+
+func (c *httpGitHubClient) setVisibility(id string, public bool, at time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.visibility == nil {
+		c.visibility = map[string]visibilityFact{}
+	}
+	c.visibility[id] = visibilityFact{public: public, at: at}
+}
+
+// waitOutRateLimit applies the policy of the client to a request that is about to be sent while the rate
+// limit is used up: a limit that ends within the maximum wait is waited for, and the request goes on
+// (nil, nil). A limit that ends later, or at an unknown time, is returned and the request must not be
+// sent: the caller answers from its stale cache entry, if it has one, or fails with the error. The
+// error is for a wait that was cancelled.
+func (c *httpGitHubClient) waitOutRateLimit(ctx context.Context) (*GitHubRateLimitError, error) {
+	rl := c.rateLimited()
+	if rl == nil {
+		return nil, nil
+	}
+	wait := rl.Reset.Sub(c.now())
+	if rl.Reset.IsZero() || wait > c.maxWait {
+		return rl, nil
+	}
+	c.logf("rate limit reached: waiting %s", wait.Round(time.Millisecond))
+	if err := c.sleep(ctx, wait+time.Second); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// send sends one request and reads the whole answer.
+func (c *httpGitHubClient) send(ctx context.Context, u, token string, entry *cacheEntry) (*httpResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("User-Agent", "jactionlint/"+getCommandVersion())
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	} else if c.currentToken() == "" {
+		c.noticeAnonymous() // Not when only this request goes without the token
+	}
+	if entry != nil && entry.ETag != "" && entry.Status == http.StatusOK {
+		req.Header.Set("If-None-Match", entry.ETag)
+	}
+	return c.roundTrip(req)
+}
+
+func (c *httpGitHubClient) roundTrip(req *http.Request) (*httpResponse, error) {
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, c.wrapTransport(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxGitHubBodyBytes+1))
+	if err != nil {
+		return nil, c.wrapTransport(fmt.Errorf("could not read the answer: %w", err))
+	}
+	if len(body) > maxGitHubBodyBytes {
+		return nil, &redactedError{msg: fmt.Sprintf("the answer of the GitHub API for %s is too big", resp.Request.URL.Path)}
+	}
+	return &httpResponse{status: resp.StatusCode, header: resp.Header, body: body}, nil
+}
+
+// wrapTransport makes the error of a request printable: the text is redacted and says what was
+// tried. The cause stays in the chain so that callers can tell a timeout from a failed DNS lookup.
+func (c *httpGitHubClient) wrapTransport(err error) error {
+	return &redactedError{msg: c.red.redact("could not reach the GitHub API: " + err.Error()), err: err}
+}
+
+// retryableTransport reports whether a failed request may work when repeated: a timeout or a connection
+// which was cut. A name that does not resolve, a refused connection or a refused redirect will not
+// change in a second.
+func retryableTransport(err error) bool {
+	var dns *net.DNSError
+	switch {
+	case errors.As(err, &dns):
+		return dns.IsTimeout || dns.IsTemporary
+	case errors.Is(err, context.Canceled), errors.Is(err, syscall.ECONNREFUSED):
+		return false
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, syscall.ECONNRESET):
+		return true
+	}
+	var ne net.Error
+	return errors.As(err, &ne) && ne.Timeout()
+}
+
+// do sends a request and repeats it as the answer calls for. retryAnon is true on the single repeat
+// without the token after the token was rejected.
+//
+// probe marks the anonymous request that asks again after a token was refused for a repository: its rate
+// limit is not the one of the token, so it never changes what the client knows about the limit.
+func (c *httpGitHubClient) do(ctx context.Context, u, token string, entry *cacheEntry, key string, retryAnon, probe bool) (*httpAnswer, error) {
+	limitWaits := 0
+	for attempt := 0; ; attempt++ {
+		res, err := c.send(ctx, u, token, entry)
+		if err != nil {
+			// A timeout is repeated once: a second timeout means the server is not answering
+			if attempt < min(c.retries, 1) && retryableTransport(err) && ctx.Err() == nil {
+				d := c.backoff(attempt)
+				c.logf("GET %s: %v. trying again in %s", u, err, d.Round(time.Millisecond))
+				if serr := c.sleep(ctx, d); serr != nil {
+					return nil, serr
+				}
+				continue
+			}
+			return nil, err
+		}
+
+		if !probe {
+			c.noteRateLimit(res, token != "")
+		}
+		c.logf("GET %s: %d (rate limit remaining: %s)", u, res.status, res.header.Get("X-RateLimit-Remaining"))
+
+		switch st := res.status; {
+		case st == http.StatusNotModified && entry != nil:
+			entry.Fetched = c.now()
+			entry.Shared = time.Time{} // the server just answered this client itself
+			c.cache.put(key, entry)
+			return answerFromEntry(entry), nil
+		case st == http.StatusOK:
+			e := &cacheEntry{URL: u, ETag: res.header.Get("ETag"), Fetched: c.now(), Status: st, Link: res.header.Get("Link"), Body: res.body}
+			c.cache.put(key, e)
+			return answerFromEntry(e), nil
+		case st == http.StatusNotFound || st == http.StatusGone || st == http.StatusUnavailableForLegalReasons || st == http.StatusUnprocessableEntity:
+			// Remember that it does not exist for the TTL so that the same lookup is not repeated
+			c.cache.put(key, &cacheEntry{URL: u, Fetched: c.now(), Status: st})
+			return &httpAnswer{status: st}, nil
+		case st == http.StatusUnauthorized && token != "" && !retryAnon:
+			c.dropToken()
+			return c.do(ctx, u, "", nil, cacheKey(c.scope(""), u), true, false)
+		case probe && (st == http.StatusForbidden || st == http.StatusTooManyRequests):
+			// Whatever the reason, the caller keeps the first answer
+		case st == http.StatusForbidden || st == http.StatusTooManyRequests:
+			li := c.limitInfo(res)
+			if li.kind == limitNone {
+				// A token which may not read this repository (a fine-grained token or an app token
+				// scoped to other repositories) is refused even for public data: ask without it
+				// once. The token is kept for the other requests.
+				if st == http.StatusForbidden && token != "" && !retryAnon {
+					if ans, err := c.do(ctx, u, "", nil, cacheKey(c.scope(""), u), true, true); err == nil && ans.status == http.StatusOK {
+						return ans, nil
+					}
+				}
+				break
+			}
+			wait, ok := c.limitWait(li, attempt)
+			if ok && li.kind == limitPrimary {
+				ok = limitWaits < maxRateLimitWaits
+				limitWaits++
+			}
+			if ok && li.kind == limitSecondary {
+				ok = attempt < c.retries
+			}
+			if ok {
+				c.logf("GET %s: rate limited. trying again in %s", u, wait.Round(time.Millisecond))
+				if serr := c.sleep(ctx, wait); serr != nil {
+					return nil, serr
+				}
+				if li.kind == limitPrimary {
+					attempt-- // Waiting for a reset is not a retry
+				}
+				continue
+			}
+			reset := li.reset
+			if reset.IsZero() {
+				reset = c.now().Add(unknownLimitWait)
+			}
+			return nil, c.setRateLimited(reset, token != "")
+		case st == http.StatusInternalServerError || st == http.StatusBadGateway || st == http.StatusServiceUnavailable || st == http.StatusGatewayTimeout:
+			if attempt < c.retries {
+				d := c.backoff(attempt)
+				if ra, ok := parseRetryAfter(res.header.Get("Retry-After"), c.now()); ok && ra <= c.maxWait {
+					d = ra
+				}
+				c.logf("GET %s: %d. trying again in %s", u, st, d.Round(time.Millisecond))
+				if serr := c.sleep(ctx, d); serr != nil {
+					return nil, serr
+				}
+				continue
+			}
+		}
+		return nil, c.statusError(res)
+	}
+}
+
+// statusError describes a failed answer. What the API said is redacted and cut short.
+func (c *httpGitHubClient) statusError(res *httpResponse) error {
+	msg := c.red.redact(apiMessage(res.body))
+	if len(msg) > maxAPIMessageBytes {
+		msg = msg[:maxAPIMessageBytes] + "..."
+	}
+	return &GitHubStatusError{Status: res.status, Message: msg}
+}
+
+func (c *httpGitHubClient) logf(format string, args ...any) {
+	if c.debug != nil {
+		c.debug("%s", c.red.redact(fmt.Sprintf(format, args...)))
+	}
+}
+
+func (c *httpGitHubClient) noticef(format string, args ...any) {
+	if c.notify != nil {
+		c.notify(c.red.redact(fmt.Sprintf(format, args...)))
+	}
+}
+
+func (c *httpGitHubClient) noticeAnonymous() {
+	c.mu.Lock()
+	first := !c.noticedAnon
+	c.noticedAnon = true
+	c.mu.Unlock()
+	if first {
+		hint := c.noTokenHint
+		if hint == "" {
+			hint = "GITHUB_TOKEN, GH_TOKEN, --online-token-file or gh auth login"
+		}
+		c.noticef("no token found (%s) so the online checks use unauthenticated requests, which GitHub limits to 60 per hour. set a token to raise the limit", hint)
+	}
+}
+
+func (c *httpGitHubClient) dropToken() {
+	c.mu.Lock()
+	had := c.token != ""
+	c.token = ""
+	c.noticedAnon = true // Not "no token is set": it was, and was refused
+	c.mu.Unlock()
+	if had {
+		src := c.tokenSource
+		if src == "" {
+			src = "the environment"
+		}
+		c.noticef("the token from %s was rejected by the GitHub API (401). continuing without it", src)
+	}
+}
+
+// noteRateLimit remembers that the limit is used up when the answer says so, so that no request is
+// wasted afterwards.
+func (c *httpGitHubClient) noteRateLimit(res *httpResponse, authenticated bool) {
+	if res.header.Get("X-RateLimit-Remaining") != "0" {
+		return
+	}
+	if reset := parseResetHeader(res.header.Get("X-RateLimit-Reset")); !reset.IsZero() && c.now().Before(reset) {
+		c.setRateLimited(reset, authenticated)
+	}
+}
+
+type limitKind int
+
+const (
+	limitNone limitKind = iota
+	// limitPrimary is the hourly quota. The answer says when it resets.
+	limitPrimary
+	// limitSecondary is the throttle on bursts. Retry-After says how long to wait, if anything.
+	limitSecondary
+)
+
+type limitDetails struct {
+	kind limitKind
+	// reset is when the limit ends. It is zero when unknown.
+	reset time.Time
+	// retryAfter is the wait the server asked for. It is zero when it said nothing.
+	retryAfter time.Duration
+}
+
+// limitInfo tells whether a 403 or 429 answer is about a rate limit. Other 403 answers (a blocked
+// repository, a missing scope) are ordinary failures.
+func (c *httpGitHubClient) limitInfo(res *httpResponse) limitDetails {
+	now := c.now()
+	ra, hasRA := parseRetryAfter(res.header.Get("Retry-After"), now)
+	msg := strings.ToLower(apiMessage(res.body))
+	remaining0 := res.header.Get("X-RateLimit-Remaining") == "0"
+	secondary := strings.Contains(msg, "secondary rate limit") || strings.Contains(msg, "abuse")
+	switch {
+	case !remaining0 && !hasRA && res.status != http.StatusTooManyRequests && !strings.Contains(msg, "rate limit") && !secondary:
+		return limitDetails{}
+	case hasRA || secondary || (res.status == http.StatusTooManyRequests && !remaining0):
+		d := limitDetails{kind: limitSecondary, retryAfter: ra}
+		if hasRA {
+			d.reset = now.Add(ra)
+		}
+		return d
+	}
+	d := limitDetails{kind: limitPrimary, reset: parseResetHeader(res.header.Get("X-RateLimit-Reset"))}
+	if !d.reset.IsZero() && now.After(d.reset) {
+		d.reset = time.Time{}
+	}
+	return d
+}
+
+// limitWait returns how long to wait before trying again, and whether to do it at all: the wait must
+// not exceed the maximum. A secondary limit that gave no time is retried with the exponential backoff.
+func (c *httpGitHubClient) limitWait(li limitDetails, attempt int) (time.Duration, bool) {
+	switch li.kind {
+	case limitSecondary:
+		if li.retryAfter > 0 {
+			return li.retryAfter + c.jitter(time.Second), li.retryAfter <= c.maxWait
+		}
+		return c.backoff(attempt), true
+	case limitPrimary:
+		if li.reset.IsZero() {
+			return 0, false
+		}
+		wait := li.reset.Sub(c.now())
+		return max(wait, 0) + time.Second, wait <= c.maxWait
+	}
+	return 0, false
+}
+
+// parseRetryAfter parses the Retry-After header: seconds or an HTTP date.
+func parseRetryAfter(v string, now time.Time) (time.Duration, bool) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return 0, false
+	}
+	if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+		return time.Duration(n) * time.Second, true
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		return max(t.Sub(now), 0), true
+	}
+	return 0, false
+}
+
+func parseResetHeader(v string) time.Time {
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(n, 0)
+}
+
+func apiMessage(body []byte) string {
+	var m struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(body, &m) == nil {
+		return m.Message
+	}
+	return ""
+}
+
+// getJSON fetches the URL and decodes the answer. Missing things are ErrGitHubNotFound.
+func (c *httpGitHubClient) getJSON(ctx context.Context, target string, out any) (*httpAnswer, error) {
+	ans, err := c.get(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+	if ans.status != http.StatusOK {
+		return ans, fmt.Errorf("%s: %w", strings.SplitN(target, "?", 2)[0], ErrGitHubNotFound)
+	}
+	if out != nil {
+		if err := json.Unmarshal(ans.body, out); err != nil {
+			return ans, fmt.Errorf("could not decode the answer of the GitHub API for %s: %w", target, err)
+		}
+	}
+	return ans, nil
+}
+
+// nextLink returns the URL of the next page from a Link header, or "".
+func nextLink(link string) string {
+	for _, part := range strings.Split(link, ",") {
+		segs := strings.Split(part, ";")
+		if len(segs) < 2 {
+			continue
+		}
+		for _, s := range segs[1:] {
+			if strings.TrimSpace(s) == `rel="next"` {
+				return strings.Trim(strings.TrimSpace(segs[0]), "<>")
+			}
+		}
+	}
+	return ""
+}
+
+// getPages fetches a list and passes every page to the function. It reads at most maxPages pages and
+// reports whether more were left.
+func (c *httpGitHubClient) getPages(ctx context.Context, target string, maxPages int, page func(body []byte) error) (truncated bool, err error) {
+	for i := 0; target != ""; i++ {
+		if i >= maxPages {
+			return true, nil
+		}
+		ans, err := c.get(ctx, target)
+		if err != nil {
+			return false, err
+		}
+		if ans.status != http.StatusOK {
+			return false, fmt.Errorf("%s: %w", strings.SplitN(target, "?", 2)[0], ErrGitHubNotFound)
+		}
+		if err := page(ans.body); err != nil {
+			return false, err
+		}
+		target = nextLink(ans.link)
+	}
+	return false, nil
+}
+
+// errInvalidGitHubName is returned instead of a request for a name which is not a plain GitHub name.
+var errInvalidGitHubName = errors.New("not a valid GitHub name")
+
+// repoURL is the only place which builds the path of a repository request. The owner and the repository
+// are validated here, every segment is escaped on its own and joined with "/", so what a workflow
+// contains can never add, remove or change a segment of the path. The tail segments are passed
+// as they are (not split) and need to have been validated: ref names with validGitRefName, which
+// is why they go through refSegments.
+func repoURL(owner, repo string, tail ...string) (string, error) {
+	if !validGitHubOwner(owner) || !validGitHubRepo(repo) {
+		return "", fmt.Errorf("%w: %q/%q", errInvalidGitHubName, owner, repo)
+	}
+	segs := append([]string{"repos", owner, repo}, tail...)
+	for i, s := range segs {
+		if s == "" || s == "." || s == ".." {
+			return "", fmt.Errorf("%w: empty or dot path segment", errInvalidGitHubName)
+		}
+		segs[i] = url.PathEscape(s)
+	}
+	return "/" + strings.Join(segs, "/"), nil
+}
+
+// refSegments validates a ref name and splits it in the segments it is made of ("feature/x" is two).
+func refSegments(name string) ([]string, error) {
+	if !validGitRefName(name) {
+		return nil, fmt.Errorf("%w: ref %q", errInvalidGitHubName, name)
+	}
+	return strings.Split(name, "/"), nil
+}
+
+// checkAPIPath refuses a URL whose path is not below the path of the API or has a dot segment, however
+// it is escaped. It is the last line of defense for every request, whoever built the URL.
+func (c *httpGitHubClient) checkAPIPath(u *url.URL) error {
+	prefix := strings.TrimRight(c.base.EscapedPath(), "/") + "/"
+	if !strings.HasPrefix(u.EscapedPath(), prefix) {
+		return fmt.Errorf("path %q is not below %q", u.EscapedPath(), prefix)
+	}
+	for _, seg := range strings.Split(u.EscapedPath(), "/") {
+		d, err := url.PathUnescape(seg)
+		if err != nil || d == "." || d == ".." || strings.ContainsAny(d, "/\\") {
+			return fmt.Errorf("path %q has a segment which changes the path", u.EscapedPath())
+		}
+	}
+	return nil
+}
+
+// sameOrigin reports whether two URLs have the same scheme and host.
+func sameOrigin(a, b *url.URL) bool {
+	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Host, b.Host)
+}
+
+// authRedirectPolicy wraps the redirect policy of a client. A request which carries the token is never
+// redirected to another origin (the token would go with it, or the request would silently run
+// without it), and the header is dropped from the redirected request of any other kind as well.
+func authRedirectPolicy(next func(req *http.Request, via []*http.Request) error) func(req *http.Request, via []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) > 0 && !sameOrigin(req.URL, via[0].URL) {
+			if via[0].Header.Get("Authorization") != "" {
+				return fmt.Errorf("refusing to follow a redirect of an authenticated request to another host (%s)", req.URL.Host)
+			}
+			req.Header.Del("Authorization")
+		}
+		if next != nil {
+			return next(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+}
+
+// Repository implements GitHubClient.
+func (c *httpGitHubClient) Repository(ctx context.Context, owner, repo string) (*GitHubRepo, error) {
+	var r GitHubRepo
+	path, err := repoURL(owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	ans, err := c.getJSON(ctx, path, &r)
+	if err != nil {
+		return nil, err
+	}
+	// Not known to be public is private: an answer which does not say "private": false, or which says internal, is
+	r.Private = !repoBodyPublic(ans.body)
+	return &r, nil
+}
+
+// Tags implements GitHubClient.
+func (c *httpGitHubClient) Tags(ctx context.Context, owner, repo string) (*GitHubTagList, error) {
+	l := &GitHubTagList{}
+	path, err := repoURL(owner, repo, "tags")
+	if err != nil {
+		return nil, err
+	}
+	truncated, err := c.getPages(ctx, path+"?per_page=100", maxGitHubPages, func(body []byte) error {
+		var tags []struct {
+			Name   string `json:"name"`
+			Commit struct {
+				SHA string `json:"sha"`
+			} `json:"commit"`
+		}
+		if err := json.Unmarshal(body, &tags); err != nil {
+			return err
+		}
+		for _, t := range tags {
+			l.Tags = append(l.Tags, GitHubTag{Name: t.Name, SHA: t.Commit.SHA})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	l.Truncated = truncated
+	return l, nil
+}
+
+type gitObject struct {
+	Object struct {
+		Type string `json:"type"`
+		SHA  string `json:"sha"`
+	} `json:"object"`
+}
+
+// ResolveRef implements GitHubClient.
+func (c *httpGitHubClient) ResolveRef(ctx context.Context, owner, repo string, ns GitHubRefNamespace, name string) (string, bool, error) {
+	var ref gitObject
+	segs, err := refSegments(name)
+	if err != nil {
+		return "", false, err
+	}
+	path, err := repoURL(owner, repo, append([]string{"git", "ref", string(ns)}, segs...)...)
+	if err != nil {
+		return "", false, err
+	}
+	_, err = c.getJSON(ctx, path, &ref)
+	if errors.Is(err, ErrGitHubNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	// An annotated tag points to a tag object which points to the commit (or to another tag)
+	for i := 0; ref.Object.Type == "tag" && i < maxTagDerefs; i++ {
+		sha := ref.Object.SHA
+		ref = gitObject{}
+		tagPath, err := repoURL(owner, repo, "git", "tags", sha)
+		if err != nil { // The SHA comes from the API; it is escaped and checked for dot segments like the rest
+			return "", false, err
+		}
+		if _, err := c.getJSON(ctx, tagPath, &ref); err != nil {
+			return "", false, err
+		}
+	}
+	if ref.Object.Type != "commit" {
+		return "", false, nil // Points to a tree or a blob: no action can be there
+	}
+	return ref.Object.SHA, true, nil
+}
+
+// Branches implements GitHubClient.
+func (c *httpGitHubClient) Branches(ctx context.Context, owner, repo string, limit int) (*GitHubBranchList, error) {
+	l := &GitHubBranchList{}
+	limit = max(limit, 1)
+	perPage := min(limit, 100)
+	pages := (limit + perPage - 1) / perPage
+	path, err := repoURL(owner, repo, "branches")
+	if err != nil {
+		return nil, err
+	}
+	truncated, err := c.getPages(ctx, path+"?per_page="+strconv.Itoa(perPage), min(pages, maxGitHubPages), func(body []byte) error {
+		var bs []struct {
+			Name   string `json:"name"`
+			Commit struct {
+				SHA string `json:"sha"`
+			} `json:"commit"`
+		}
+		if err := json.Unmarshal(body, &bs); err != nil {
+			return err
+		}
+		for _, b := range bs {
+			l.Branches = append(l.Branches, GitHubBranch{Name: b.Name, SHA: b.Commit.SHA})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(l.Branches) > limit {
+		l.Branches, truncated = l.Branches[:limit], true
+	}
+	l.Truncated = truncated
+	return l, nil
+}
+
+// Compare implements GitHubClient.
+func (c *httpGitHubClient) Compare(ctx context.Context, owner, repo, base, head string) (GitHubCompareStatus, error) {
+	var r struct {
+		Status string `json:"status"`
+	}
+	if !validGitRefName(base) || !validGitRefName(head) {
+		return "", fmt.Errorf("%w: compare %q...%q", errInvalidGitHubName, base, head)
+	}
+	// "base...head" is one path segment, in which '/' of a branch name is escaped
+	path, err := repoURL(owner, repo, "compare", base+"..."+head)
+	if err != nil {
+		return "", err
+	}
+	if _, err := c.getJSON(ctx, path+"?per_page=1", &r); err != nil {
+		return "", err
+	}
+	s := GitHubCompareStatus(r.Status)
+	switch s {
+	case GitHubCompareIdentical, GitHubCompareAhead, GitHubCompareBehind, GitHubCompareDiverged:
+		return s, nil
+	}
+	return "", fmt.Errorf("unexpected comparison status %q", r.Status)
+}
+
+// maxFileContentBytes bounds the size of a file which FileContent returns: the contents API sends the
+// content of a file up to 1 MB inline, and a file of metadata is far smaller.
+const maxFileContentBytes = 1 << 20
+
+// FileContent implements GitHubContentClient with the contents API (one request). The answer for a ref
+// which is a full commit SHA is kept for ever: neither the commit nor the file in it can change.
+func (c *httpGitHubClient) FileContent(ctx context.Context, owner, repo, ref, path string) ([]byte, error) {
+	if !validRepoFilePath(path) {
+		return nil, fmt.Errorf("%w: file path %q", errInvalidGitHubName, path)
+	}
+	if !validGitRefName(ref) {
+		return nil, fmt.Errorf("%w: ref %q", errInvalidGitHubName, ref)
+	}
+	target, err := repoURL(owner, repo, append([]string{"contents"}, strings.Split(path, "/")...)...)
+	if err != nil {
+		return nil, err
+	}
+	target += "?ref=" + url.QueryEscape(ref)
+	ans, err := c.fetch(ctx, target, false, validGitSHA(ref))
+	if err != nil {
+		return nil, err
+	}
+	notFound := fmt.Errorf("%s/%s: %s at %s: %w", owner, repo, path, ref, ErrGitHubNotFound)
+	if ans.status != http.StatusOK {
+		return nil, notFound
+	}
+	var f struct {
+		Type     string `json:"type"`
+		Encoding string `json:"encoding"`
+		Size     int    `json:"size"`
+		Content  string `json:"content"`
+	}
+	if err := json.Unmarshal(ans.body, &f); err != nil {
+		// A directory is answered with a list
+		if bytes.HasPrefix(bytes.TrimSpace(ans.body), []byte("[")) {
+			return nil, notFound
+		}
+		return nil, fmt.Errorf("could not decode the answer of the GitHub API for %s: %w", path, err)
+	}
+	if f.Type != "file" {
+		return nil, notFound // A directory, a symbolic link or a submodule
+	}
+	if f.Encoding != "base64" || f.Size > maxFileContentBytes {
+		return nil, fmt.Errorf("%s/%s: %s at %s is too large to read through the contents API", owner, repo, path, ref)
+	}
+	b, err := base64.StdEncoding.DecodeString(strings.NewReplacer("\n", "", "\r", "").Replace(f.Content))
+	if err != nil {
+		return nil, fmt.Errorf("could not decode the content of %s: %w", path, err)
+	}
+	return b, nil
+}
+
+// Advisories implements GitHubClient.
+func (c *httpGitHubClient) Advisories(ctx context.Context, owner, repo string) ([]GitHubAdvisory, error) {
+	return c.AdvisoriesForPackages(ctx, []string{owner + "/" + repo})
+}
+
+// AdvisoriesForPackages implements GitHubPackageAdvisoryClient. The API takes a comma separated list of
+// packages in "affects", so a repository and one of its subdirectories cost one request.
+func (c *httpGitHubClient) AdvisoriesForPackages(ctx context.Context, packages []string) ([]GitHubAdvisory, error) {
+	q := url.Values{"ecosystem": {"actions"}, "affects": {strings.Join(packages, ",")}, "per_page": {"100"}}
+	var ret []GitHubAdvisory
+	acc := newAdvisoryAccumulator(&ret)
+	_, err := c.getPages(ctx, "/advisories?"+q.Encode(), maxGitHubPages, acc.page)
+	return ret, err
+}
+
+// maxBulkAdvisoryPages bounds how many pages of 100 the list of all advisories of the actions ecosystem may take
+// (at the time of writing it is one page, see ActionAdvisories). A longer list is not read to the end.
+const maxBulkAdvisoryPages = 5
+
+// ActionAdvisories implements GitHubAdvisoryListClient: every published advisory of the actions ecosystem, in the
+// pages of one list request, instead of one request for each action. Names no repository.
+func (c *httpGitHubClient) ActionAdvisories(ctx context.Context) ([]GitHubAdvisory, error) {
+	q := url.Values{"ecosystem": {"actions"}, "per_page": {"100"}}
+	var ret []GitHubAdvisory
+	acc := newAdvisoryAccumulator(&ret)
+	truncated, err := c.getPages(ctx, "/advisories?"+q.Encode(), maxBulkAdvisoryPages, acc.page)
+	if err != nil {
+		return nil, err
+	}
+	if truncated {
+		return nil, ErrGitHubListTruncated
+	}
+	return ret, nil
+}
+
+// advisoryAccumulator turns the pages of an advisory list into GitHubAdvisory values: it drops withdrawn
+// advisories and duplicates, and keeps the vulnerabilities of the actions ecosystem only.
+type advisoryAccumulator struct {
+	out  *[]GitHubAdvisory
+	seen map[string]bool
+}
+
+func newAdvisoryAccumulator(out *[]GitHubAdvisory) *advisoryAccumulator {
+	return &advisoryAccumulator{out: out, seen: map[string]bool{}}
+}
+
+func (a *advisoryAccumulator) page(body []byte) error {
+	var as []struct {
+		ID              string `json:"ghsa_id"`
+		CVE             string `json:"cve_id"`
+		Summary         string `json:"summary"`
+		Severity        string `json:"severity"`
+		URL             string `json:"html_url"`
+		WithdrawnAt     string `json:"withdrawn_at"`
+		Vulnerabilities []struct {
+			Package struct {
+				Ecosystem string `json:"ecosystem"`
+				Name      string `json:"name"`
+			} `json:"package"`
+			Range        string `json:"vulnerable_version_range"`
+			FirstPatched any    `json:"first_patched_version"`
+		} `json:"vulnerabilities"`
+	}
+	if err := json.Unmarshal(body, &as); err != nil {
+		return err
+	}
+	for _, x := range as {
+		if x.WithdrawnAt != "" || a.seen[x.ID] {
+			continue
+		}
+		a.seen[x.ID] = true
+		adv := GitHubAdvisory{ID: x.ID, CVE: x.CVE, Summary: x.Summary, Severity: x.Severity, URL: x.URL}
+		for _, v := range x.Vulnerabilities {
+			if !strings.EqualFold(v.Package.Ecosystem, "actions") {
+				continue
+			}
+			patched, _ := v.FirstPatched.(string)
+			adv.Vulnerabilities = append(adv.Vulnerabilities, GitHubVulnerability{Package: v.Package.Name, VulnerableRange: v.Range, FirstPatched: patched})
+		}
+		*a.out = append(*a.out, adv)
+	}
+	return nil
+}
+
+// onlineSupported is false where the GitHub API cannot be used (the WebAssembly build).
+const onlineSupported = true
+
+// graphqlURL returns the URL of the GraphQL API: $GITHUB_GRAPHQL_URL when set, else the sibling of the REST
+// API (api.github.com/graphql, or host/api/graphql for the host/api/v3 of GitHub Enterprise Server).
+func (c *httpGitHubClient) graphqlURL() string {
+	if c.graphql != "" {
+		return c.graphql
+	}
+	u := *c.base
+	if p, ok := strings.CutSuffix(u.Path, "/v3"); ok {
+		u.Path = p + "/graphql"
+	} else {
+		u.Path = strings.TrimRight(u.Path, "/") + "/graphql"
+	}
+	return u.String()
+}
+
+const branchScanQuery = `query($owner:String!,$name:String!,$sha:String!,$after:String){
+  repository(owner:$owner,name:$name){
+    refs(refPrefix:"refs/heads/",first:100,after:$after){
+      pageInfo{hasNextPage endCursor}
+      nodes{name compare(headRef:$sha){status}}
+    }
+  }
+}`
+
+// CommitOnAnyBranch implements GitHubBranchScanner with the GraphQL API, which can compare a commit with
+// 100 branches in one request. GraphQL needs a token, so without one it is unavailable. The result
+// is kept in the cache for the TTL like the answers of the REST API (a POST has no ETag).
+func (c *httpGitHubClient) CommitOnAnyBranch(ctx context.Context, owner, repo, sha string, limit int) (GitHubBranchScan, error) {
+	token := c.currentToken()
+	if token == "" && !c.offline {
+		return GitHubBranchScan{}, ErrGitHubBranchScanUnavailable
+	}
+	if !validGitHubOwner(owner) || !validGitHubRepo(repo) || len(sha) != 40 || !validGitSHA(sha) {
+		return GitHubBranchScan{}, ErrGitHubBranchScanUnavailable
+	}
+	limit = max(limit, 1)
+	// The answer is cached like a GET under a name that cannot be a URL of the REST API
+	name := fmt.Sprintf("graphql:branch-scan:%s/%s@%s:%d", strings.ToLower(owner), strings.ToLower(repo), strings.ToLower(sha), limit)
+	key := cacheKey(c.scope(token), name)
+	var stale *GitHubBranchScan // an expired answer, for when the rate limit leaves no choice
+	e := c.findCached(key, name, token, strings.ToLower(owner+"/"+repo))
+	if e != nil {
+		var scan GitHubBranchScan
+		if json.Unmarshal(e.Body, &scan) == nil {
+			if c.offline || (c.ttl > 0 && c.now().Sub(e.Fetched) < c.ttl) {
+				c.logf("GraphQL %s: from the cache", name)
+				c.noteAnswer(answerCached, e.Fetched)
+				return scan, nil
+			}
+			stale = &scan
+		}
+	}
+	if c.offline {
+		return GitHubBranchScan{}, ErrGitHubBranchScanUnavailable // Compared one by one from the cache
+	}
+	// Sharing asks for the repository, which needs a slot of its own: it happens after this one is released
+	shared := false
+	defer func() {
+		if shared {
+			c.shareIfPublic(ctx, name, key, owner, repo, false)
+		}
+	}()
+	// The same policy as for the REST requests: wait for a limit that ends soon, otherwise stale data
+	// is better than none
+	if rl, err := c.waitOutRateLimit(ctx); err != nil {
+		return GitHubBranchScan{}, err
+	} else if rl != nil {
+		if stale != nil {
+			c.noteAnswer(answerStale, e.Fetched)
+			return *stale, nil
+		}
+		return GitHubBranchScan{}, rl
+	}
+
+	select {
+	case c.sem <- struct{}{}:
+		defer func() { <-c.sem }()
+	case <-ctx.Done():
+		return GitHubBranchScan{}, ctx.Err()
+	}
+
+	scan := GitHubBranchScan{Complete: true}
+	seen := 0
+	after := (*string)(nil)
+	for {
+		var res struct {
+			Data struct {
+				Repository *struct {
+					Refs struct {
+						PageInfo struct {
+							HasNextPage bool   `json:"hasNextPage"`
+							EndCursor   string `json:"endCursor"`
+						} `json:"pageInfo"`
+						Nodes []struct {
+							Compare *struct {
+								Status string `json:"status"`
+							} `json:"compare"`
+						} `json:"nodes"`
+					} `json:"refs"`
+				} `json:"repository"`
+			} `json:"data"`
+			Errors []struct {
+				Message string `json:"message"`
+			} `json:"errors"`
+		}
+		vars := map[string]any{"owner": owner, "name": repo, "sha": sha, "after": after}
+		if err := c.postGraphQL(ctx, token, branchScanQuery, vars, &res); err != nil {
+			if stale != nil && errors.Is(err, ErrGitHubRateLimited) {
+				c.noteAnswer(answerStale, e.Fetched)
+				return *stale, nil // like the REST requests: stale data is better than none
+			}
+			return GitHubBranchScan{}, err
+		}
+		if len(res.Errors) > 0 || res.Data.Repository == nil {
+			msg := "no data"
+			if len(res.Errors) > 0 {
+				msg = res.Errors[0].Message
+			}
+			// The scan is an optimization. An error of the query (a field that cannot be resolved, for
+			// example) must not count as a failure of the session: the caller compares the branches over REST.
+			return GitHubBranchScan{}, fmt.Errorf("%w: GraphQL: %s", ErrGitHubBranchScanUnavailable, msg)
+		}
+		refs := res.Data.Repository.Refs
+		for _, n := range refs.Nodes {
+			if seen >= limit {
+				scan.Complete = false
+				break
+			}
+			seen++
+			if n.Compare != nil && (n.Compare.Status == "BEHIND" || n.Compare.Status == "IDENTICAL") {
+				scan.Found = true
+			}
+		}
+		if scan.Found {
+			scan.Complete = false // Does not matter
+			break
+		}
+		if !refs.PageInfo.HasNextPage || !scan.Complete {
+			break
+		}
+		cursor := refs.PageInfo.EndCursor
+		after = &cursor
+	}
+	c.noteAnswer(answerNetwork, time.Time{})
+	if b, err := json.Marshal(scan); err == nil {
+		c.cache.put(key, &cacheEntry{URL: name, Fetched: c.now(), Status: http.StatusOK, Body: b})
+		shared = true
+	}
+	return scan, nil
+}
+
+// postGraphQL sends a GraphQL query. The token goes only to the GraphQL URL, which is on the host of
+// the REST API.
+func (c *httpGitHubClient) postGraphQL(ctx context.Context, token, query string, vars map[string]any, out any) error {
+	body, err := json.Marshal(map[string]any{"query": query, "variables": vars})
+	if err != nil {
+		return err
+	}
+	gu := c.graphqlURL()
+	limitWaits := 0
+	for attempt := 0; ; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, gu, bytes.NewReader(body))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("User-Agent", "jactionlint/"+getCommandVersion())
+		res, err := c.roundTrip(req)
+		if err != nil {
+			// Like the REST requests: a timeout is repeated once
+			if attempt < min(c.retries, 1) && retryableTransport(err) && ctx.Err() == nil {
+				d := c.backoff(attempt)
+				c.logf("POST %s: %v. trying again in %s", gu, err, d.Round(time.Millisecond))
+				if serr := c.sleep(ctx, d); serr != nil {
+					return serr
+				}
+				continue
+			}
+			return err
+		}
+		c.noteRateLimit(res, true)
+		c.logf("POST %s: %d (rate limit remaining: %s)", gu, res.status, res.header.Get("X-RateLimit-Remaining"))
+		switch res.status {
+		case http.StatusOK:
+			return json.Unmarshal(res.body, out)
+		case http.StatusUnauthorized:
+			c.dropToken()
+			return ErrGitHubBranchScanUnavailable // GraphQL needs a token. The REST API does not
+		case http.StatusForbidden, http.StatusTooManyRequests:
+			li := c.limitInfo(res)
+			if li.kind == limitNone {
+				break
+			}
+			wait, ok := c.limitWait(li, attempt)
+			if ok && li.kind == limitPrimary {
+				ok = limitWaits < maxRateLimitWaits
+				limitWaits++
+			}
+			if ok && li.kind == limitSecondary {
+				ok = attempt < c.retries
+			}
+			if ok {
+				c.logf("POST %s: rate limited. trying again in %s", gu, wait.Round(time.Millisecond))
+				if serr := c.sleep(ctx, wait); serr != nil {
+					return serr
+				}
+				if li.kind == limitPrimary {
+					attempt-- // Waiting for a reset is not a retry
+				}
+				continue
+			}
+			reset := li.reset
+			if reset.IsZero() {
+				reset = c.now().Add(unknownLimitWait)
+			}
+			return c.setRateLimited(reset, true)
+		case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+			if attempt < c.retries {
+				d := c.backoff(attempt)
+				if ra, ok := parseRetryAfter(res.header.Get("Retry-After"), c.now()); ok && ra <= c.maxWait {
+					d = ra
+				}
+				c.logf("POST %s: %d. trying again in %s", gu, res.status, d.Round(time.Millisecond))
+				if serr := c.sleep(ctx, d); serr != nil {
+					return serr
+				}
+				continue
+			}
+		}
+		return c.statusError(res)
+	}
+}
+
+// ghHostname is the host the gh command knows an API host by: api.github.com is github.com, and the API of
+// GitHub Enterprise Cloud with data residency, api.SUBDOMAIN.ghe.com, is SUBDOMAIN.ghe.com. The host of a
+// GitHub Enterprise Server is the same for both.
+func ghHostname(apiHost string) string {
+	if apiHost == "api.github.com" {
+		return "github.com"
+	}
+	if h, ok := strings.CutPrefix(apiHost, "api."); ok && strings.HasSuffix(h, ".ghe.com") {
+		return h
+	}
+	return apiHost
+}
+
+type answerSource int
+
+const (
+	answerNetwork   answerSource = iota // GitHub answered (a 304 revalidation counts)
+	answerCached                        // a cached answer used without asking: younger than the TTL, or any age offline
+	answerStale                         // an expired cached answer used because the rate limit left no choice
+	answerImmutable                     // a cached answer about something that cannot change (a file at a full commit SHA), of any age
+)
+
+// noteAnswer counts an answer that a lookup used, and the age of the oldest cached one, for the coverage of the
+// run (see OnlineAnswers). fetched is when this client last received the answer from GitHub.
+func (c *httpGitHubClient) noteAnswer(src answerSource, fetched time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	switch src {
+	case answerNetwork:
+		c.answers.Network++
+		return
+	case answerImmutable:
+		c.answers.Immutable++
+		return
+	case answerCached:
+		c.answers.Cache++
+	case answerStale:
+		c.answers.Stale++
+	}
+	if !fetched.IsZero() && (c.answers.OldestFetched == "" || fetched.UTC().Format(time.RFC3339) < c.answers.OldestFetched) {
+		c.answers.OldestFetched = fetched.UTC().Format(time.RFC3339)
+	}
+}
+
+// answerStats implements answerStatsSource.
+func (c *httpGitHubClient) answerStats() OnlineAnswers {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	a := c.answers
+	if !c.offline && c.ttl > 0 {
+		// Rounded up: the bound reported must never be tighter than the one enforced (1.5s is 2, 500ms is 1)
+		a.CacheTTLSeconds = int((c.ttl + time.Second - 1) / time.Second)
+	}
+	return a
+}

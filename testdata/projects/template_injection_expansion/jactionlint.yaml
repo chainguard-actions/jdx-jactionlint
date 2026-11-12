@@ -1,0 +1,4 @@
+rules:
+  template-injection:
+    level: warn
+    pedantic: true

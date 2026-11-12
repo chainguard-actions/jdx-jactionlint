@@ -1,0 +1,1302 @@
+{
+  "_note": "Trimmed answers of the GitHub API and of the registries (images) recorded in 2026-10 (see github_fixture.go). Tag and branch lists keep only the entries the tests use, and the action.yml files of taiki-e/install-action, jdx/mise-action and gradle/actions are shortened (inputs and outputs as recorded, steps cut). example/* repositories are made up. A file which is not listed under files does not exist. Files under \"files\" are shortened where they are long (the recorded inputs, outputs and declarations are kept); a file which is not listed does not exist. pre-commit/action, actions/jekyll-build-pages, aquasecurity/trivy-action, aquasecurity/setup-trivy, actions/cache and reviewdog/action-actionlint have only the recorded files.",
+  "images": {
+    "docker.io/example/gone:1": "not-found",
+    "docker.io/library/alpine:3.19": "sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1",
+    "docker.io/library/node:latest": "sha256:32fa97f3363975684b08bf4e8a68a47c7905175cc20275b50b974bbd02aba731",
+    "docker.io/library/postgres:16": "sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d",
+    "docker.io/library/ubuntu:22.04": "sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401",
+    "ghcr.io/astral-sh/uv:0.5.0": "sha256:0e0fb77970aceaa106c1fee7103ec3e4885f6c4289e32a596123af06d2e9db9d"
+  },
+  "owners": {
+    "actions": true,
+    "example": true,
+    "ghost-owner": false,
+    "former-owner": false,
+    "moved-org": true,
+    "new-owner": true
+  },
+  "repos": {
+    "astral-sh/setup-uv": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "refs": {
+        "heads/v10.3.0": {
+          "found": false
+        }
+      },
+      "releases": {
+        "v10.3.0": {
+          "found": true,
+          "immutable": true
+        },
+        "v10": {
+          "found": false
+        },
+        "main": {
+          "found": false
+        }
+      }
+    },
+    "pypa/gh-action-pypi-publish": {
+      "repo": {
+        "archived": false,
+        "default_branch": "release/v1"
+      },
+      "refs": {
+        "heads/v1.14.0": {
+          "found": false
+        },
+        "heads/v1.14.1": {
+          "found": false
+        }
+      },
+      "releases": {
+        "v1.14.1": {
+          "found": true,
+          "immutable": true
+        },
+        "v1.14.0": {
+          "found": true
+        }
+      }
+    },
+    "example/immutable-and-branch": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "refs": {
+        "heads/v1.0.0": {
+          "sha": "8888888888888888888888888888888888888888",
+          "found": true
+        }
+      },
+      "releases": {
+        "v1.0.0": {
+          "found": true,
+          "immutable": true
+        }
+      }
+    },
+    "example/environments": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "environments": {
+        "release": {
+          "found": true,
+          "required_reviewers": true
+        },
+        "staging": {
+          "found": true
+        },
+        "prodution": {
+          "found": false
+        }
+      }
+    },
+    "example/private-environments": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "private": true
+      },
+      "environments": {
+        "production": {
+          "found": false
+        }
+      }
+    },
+    "ghost-owner/deploy": {
+      "missing": true
+    },
+    "former-owner/deploy": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "full_name": "new-owner/deploy"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "6666666666666666666666666666666666666666"
+          }
+        ]
+      },
+      "branches": {
+        "branches": [
+          {
+            "name": "main",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "moved-org/deploy": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "full_name": "new-owner/deploy"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "6666666666666666666666666666666666666666"
+          }
+        ]
+      },
+      "branches": {
+        "branches": [
+          {
+            "name": "main",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "new-owner/old-name": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "full_name": "new-owner/deploy"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "6666666666666666666666666666666666666666"
+          }
+        ]
+      },
+      "branches": {
+        "branches": [
+          {
+            "name": "main",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "new-owner/private": {
+      "missing": true
+    },
+    "new-owner/deploy": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "full_name": "new-owner/deploy"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "6666666666666666666666666666666666666666"
+          }
+        ]
+      },
+      "branches": {
+        "branches": [
+          {
+            "name": "main",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "actions/checkout": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "id": 197814629,
+        "full_name": "actions/checkout",
+        "owner": {
+          "id": 44036562
+        }
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v5",
+            "sha": "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"
+          },
+          {
+            "name": "v4.2.2",
+            "sha": "11bd71901bbe5b1630ceea73d27597364c9af683"
+          },
+          {
+            "name": "v4.2.1",
+            "sha": "eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871"
+          },
+          {
+            "name": "v4",
+            "sha": "11d5960a326750d5838078e36cf38b85af677262"
+          },
+          {
+            "name": "v3.0.0",
+            "sha": "a12a3943b4bdde767164f792f33f40b04645d846"
+          },
+          {
+            "name": "v3",
+            "sha": "a37ce9120846195fa4ece8f58b268e6043cb2f26"
+          },
+          {
+            "name": "v2",
+            "sha": "0717577d45739eb3c851188b29f50ed6c0b2194e"
+          }
+        ]
+      },
+      "branches": {
+        "branches": [
+          {
+            "name": "main",
+            "sha": "f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a"
+          },
+          {
+            "name": "releases/v1",
+            "sha": "0b496e91ec7ae4428c3ed2eeb4c3a40df431f2cc"
+          }
+        ]
+      },
+      "refs": {
+        "heads/main": {
+          "sha": "f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a",
+          "found": true
+        },
+        "heads/v4": {
+          "found": false
+        },
+        "heads/v3": {
+          "found": false
+        },
+        "tags/v4": {
+          "sha": "11d5960a326750d5838078e36cf38b85af677262",
+          "found": true
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4.2.2": {
+          "found": false
+        }
+      },
+      "compare": {
+        "f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a...2f547d07f23dec7f4a96fc091165260dcbe59529": "ahead",
+        "0b496e91ec7ae4428c3ed2eeb4c3a40df431f2cc...2f547d07f23dec7f4a96fc091165260dcbe59529": "ahead",
+        "f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a...11bd71901bbe5b1630ceea73d27597364c9af683": "behind",
+        "f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a...0000000000000000000000000000000000000001": "not-found"
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "tj-actions/changed-files": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v44",
+            "sha": "2d756ea4c53f7f6b397767d8723b3a10a9f35bf2"
+          },
+          {
+            "name": "v45",
+            "sha": "48d8f15b2aaa3d255ca5af3eba4870f807ce6b3c"
+          },
+          {
+            "name": "v45.0.2",
+            "sha": "48d8f15b2aaa3d255ca5af3eba4870f807ce6b3c"
+          },
+          {
+            "name": "v45.0.7",
+            "sha": "a284dc1814e3fd07f2e34267fc8f81227ed29fb8"
+          },
+          {
+            "name": "v46",
+            "sha": "ed68ef82c095e0d48ec87eccea555d944a631a4c"
+          },
+          {
+            "name": "v46.0.1",
+            "sha": "2f7c5bfce28377bc069a65ba478de0a74aa0ca32"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v45": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": [
+          {
+            "id": "GHSA-mrrh-fwg8-r2c3",
+            "cve": "CVE-2025-30066",
+            "summary": "tj-actions changed-files through 45.0.7 allows remote attackers to discover secrets by reading actions logs.",
+            "severity": "high",
+            "url": "https://github.com/advisories/GHSA-mrrh-fwg8-r2c3",
+            "vulnerabilities": [
+              {
+                "package": "tj-actions/changed-files",
+                "range": "<= 45.0.7",
+                "first_patched": "46.0.1"
+              }
+            ]
+          },
+          {
+            "id": "GHSA-mcph-m25j-8j63",
+            "cve": "CVE-2023-51664",
+            "summary": "tj-actions/changed-files has Potential Actions command injection in output filenames (GHSL-2023-271)",
+            "severity": "high",
+            "url": "https://github.com/advisories/GHSA-mcph-m25j-8j63",
+            "vulnerabilities": [
+              {
+                "package": "tj-actions/changed-files",
+                "range": "< 41",
+                "first_patched": "41"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "actions-rs/cargo": {
+      "repo": {
+        "archived": true,
+        "default_branch": "master"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "844f36862e911db73fe0815f00a4a2602c279505"
+          },
+          {
+            "name": "v1.0.3",
+            "sha": "844f36862e911db73fe0815f00a4a2602c279505"
+          }
+        ]
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "actions/setup-node": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "id": 178564337,
+        "full_name": "actions/setup-node",
+        "owner": {
+          "id": 44036562
+        }
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v4",
+            "sha": "49933ea5288caeca8642d1e84afbd3f7d6820020"
+          },
+          {
+            "name": "v4.1.0",
+            "sha": "39370e3970a6d050c480ffad4ff0ed4d3fdee5af"
+          }
+        ]
+      },
+      "advisories": {
+        "list": []
+      },
+      "refs": {
+        "heads/v4": {
+          "found": false
+        }
+      }
+    },
+    "actions/upload-artifact": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v4",
+            "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"
+          }
+        ]
+      },
+      "advisories": {
+        "list": []
+      },
+      "refs": {
+        "heads/v4": {
+          "found": false
+        }
+      }
+    },
+    "example/fresh": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "name": "v1.2.0",
+            "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "name": "v1.1.0",
+            "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "name": "v2.0.0",
+            "sha": "cccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+            "name": "v0.9.0",
+            "sha": "dddddddddddddddddddddddddddddddddddddddd"
+          }
+        ]
+      },
+      "release_dates": {
+        "tags/v1.2.0": {
+          "published_at": "2026-10-11T09:00:00Z"
+        },
+        "tags/v1.1.0": {
+          "published_at": "2026-09-01T09:00:00Z"
+        },
+        "tags/v2.0.0": {
+          "committed_at": "2026-10-12T08:00:00Z"
+        },
+        "tags/v0.9.0": {
+          "committed_at": "2026-01-01T00:00:00Z"
+        },
+        "commits/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee": {
+          "committed_at": "2026-10-13T06:00:00Z"
+        },
+        "commits/ffffffffffffffffffffffffffffffffffffffff": {
+          "committed_at": "2026-01-01T00:00:00Z"
+        }
+      }
+    },
+    "example/confusing": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "1111111111111111111111111111111111111111"
+          },
+          {
+            "name": "v2",
+            "sha": "2222222222222222222222222222222222222222"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "sha": "3333333333333333333333333333333333333333",
+          "found": true
+        },
+        "heads/v2": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/archived-workflows": {
+      "repo": {
+        "archived": true,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "4444444444444444444444444444444444444444"
+          }
+        ]
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/forgotten": {
+      "missing": true
+    },
+    "example/renamed-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "id": 9001,
+        "full_name": "example/new-name",
+        "owner": {
+          "id": 9002
+        }
+      }
+    },
+    "example/transferred-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main",
+        "id": 7001,
+        "full_name": "newowner/transferred-action",
+        "owner": {
+          "id": 7002
+        }
+      }
+    },
+    "example/archived-action": {
+      "repo": {
+        "archived": true,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "5555555555555555555555555555555555555555"
+          }
+        ]
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "taiki-e/install-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v2",
+            "sha": "1168f6810a3cb30a3514bf5756a3b7f0422c6df8"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v2": {
+          "found": false
+        }
+      },
+      "files": {
+        "v2:action.yml": {
+          "found": true,
+          "content": "name: Install development tools\ndescription: GitHub Action for installing development tools\n\ninputs:\n  tool:\n    description: Tools to install (whitespace or comma separated list)\n    required: true\n    # default: #publish:tool\n  checksum:\n    description: Whether to enable checksums (strongly discouraged to disable)\n    required: false\n    default: 'true'\n  fallback:\n    description: Whether to use fallback (none, cargo-binstall, or cargo-install)\n    required: false\n    default: 'cargo-binstall'\n\n# Note:\n# - inputs.* should be manually mapped to INPUT_* due to https://github.com/actions/runner/issues/665\n# - For context containing path, use GITHUB_*/RUNNER_* instead of github.*/runner.* due to https://github.com/actions/runner/issues/2185\nruns:\n  using: composite\n  steps:\n    - run: bash \"${GITHUB_ACTION_PATH:?}/main.sh\"\n      shell: bash\n"
+        },
+        "v2:action.yaml": {
+          "found": false
+        },
+        "1168f6810a3cb30a3514bf5756a3b7f0422c6df8:action.yml": {
+          "found": true,
+          "content": "name: Install development tools\ndescription: GitHub Action for installing development tools\n\ninputs:\n  tool:\n    description: Tools to install (whitespace or comma separated list)\n    required: true\n    # default: #publish:tool\n  checksum:\n    description: Whether to enable checksums (strongly discouraged to disable)\n    required: false\n    default: 'true'\n  fallback:\n    description: Whether to use fallback (none, cargo-binstall, or cargo-install)\n    required: false\n    default: 'cargo-binstall'\n\n# Note:\n# - inputs.* should be manually mapped to INPUT_* due to https://github.com/actions/runner/issues/665\n# - For context containing path, use GITHUB_*/RUNNER_* instead of github.*/runner.* due to https://github.com/actions/runner/issues/2185\nruns:\n  using: composite\n  steps:\n    - run: bash \"${GITHUB_ACTION_PATH:?}/main.sh\"\n      shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "jdx/mise-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v2",
+            "sha": "8888888888888888888888888888888888888888"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v2": {
+          "found": false
+        }
+      },
+      "files": {
+        "v2:action.yml": {
+          "found": true,
+          "content": "name: mise action\ndescription: Actions for working with mise runtime manager\nauthor: Jeff Dickey <@jdx>\nbranding:\n  icon: arrow-down-circle\n  color: purple\ninputs:\n  version:\n    required: false\n    description: The version of mise to use. If not specified, will use the latest release.\n  sha256:\n    required: false\n    description: The SHA256 checksum of the mise binary to verify the download.\n  mise_dir:\n    required: false\n    description: |\n      The directory that mise will be installed to, defaults to $HOME/.local/share/mise\n      Or $XDG_DATA_HOME/mise if $XDG_DATA_HOME is set.\n      Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.\n  tool_versions:\n    required: false\n    description: If present, this value will be written to the .tool-versions file\n  mise_toml:\n    required: false\n    description: If present, this value will be written to the .mise.toml file\n  install:\n    required: false\n    default: \"true\"\n    description: if false, will not run `mise install`\n  install_args:\n    required: false\n    description: Arguments to pass to `mise install` such as \"bun\" to only install bun\n  install_dir:\n    required: false\n    description: deprecated\n  cache:\n    required: false\n    default: \"true\"\n    description: if false, action will not read or write to cache\n  cache_save:\n    required: false\n    default: \"true\"\n    description: if false, action will not write to cache\n  cache_key_prefix:\n    required: false\n    default: \"mise-v0\"\n    description: The prefix key to use for the cache, change this to invalidate the cache\n  experimental:\n    required: false\n    default: \"false\"\n    description: if true, will use experimental features\n  log_level:\n    required: false\n    default: \"info\"\n    description: The log level to use for the action\n  working_directory:\n    required: false\n    description: The directory that mise runs in\n  reshim:\n    required: false\n    default: \"false\"\n    description: if true, will run `mise reshim --all` after setting up mise\n  github_token:\n    required: false\n    description: |\n      GitHub token for API authentication to avoid rate limits when installing GitHub-hosted tools.\n      Defaults to the automatic GitHub token.\n    default: ${{ github.token }}\n  fetch_from_github:\n    required: false\n    default: \"true\"\n    description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.\noutputs:\n  cache-hit:\n    description: A boolean value to indicate if a cache was hit.\nruns:\n  using: node20\n  main: dist/index.js\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "gradle/actions": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v4",
+            "sha": "9999999999999999999999999999999999999999"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v4:setup-gradle/action.yml": {
+          "found": true,
+          "content": "name: 'Setup Gradle'\ndescription: 'Configures Gradle for GitHub actions, caching state and generating a dependency graph via Dependency Submission.'\n\ninputs:\n  gradle-version:\n    description: |\n      Gradle version to use. If specified, this Gradle version will be downloaded, added to the PATH and used for invoking Gradle.\n      If not provided, it is assumed that the project uses the Gradle Wrapper.\n    required: false\n\n  # Cache configuration\n  cache-disabled:\n    description: When 'true', all caching is disabled. No entries will be written to or read from the cache.\n    required: false\n    default: false\n\n  cache-read-only:\n    description: |\n      When 'true', existing entries will be read from the cache but no entries will be written.\n      By default this value is 'false' for workflows on the GitHub default branch and 'true' for workflows on other branches.\n    required: false\n    default: ${{ github.event.repository != null && github.ref_name != github.event.repository.default_branch }}\n\n  cache-write-only:\n    description: |\n      When 'true', entries will not be restored from the cache but will be saved at the end of the Job.\n      Setting this to 'true' implies cache-read-only will be 'false'.\n    required: false\n    default: false\n\n  cache-overwrite-existing:\n    description: When 'true', a pre-existing Gradle User Home will not prevent the cache from being restored.\n    required: false\n    default: false\n\n  cache-encryption-key:\n    description: |\n      A base64 encoded AES key used to encrypt the configuration-cache data. The key is exported as 'GRADLE_ENCRYPTION_KEY' for later steps.\n      A suitable key can be generated with `openssl rand -base64 16`.\n      Configuration-cache data will not be saved/restored without an encryption key being provided.\n    required: false\n\n  cache-cleanup:\n    description: |\n      Specifies if the action should attempt to remove any stale/unused entries from the Gradle User Home prior to saving to the GitHub Actions cache.\n      By default ('on-success'), cleanup is performed when all Gradle builds succeed for the Job. \n      This behaviour can be disabled ('never'), or configured to always run irrespective of the build outcome ('always').\n      Valid values are 'never', 'on-success' and 'always'.\n    required: false\n    default: 'on-success'\n\n  gradle-home-cache-cleanup:\n    description: When 'true', the action will attempt to remove any stale/unused entries from the Gradle User Home prior to saving to the GitHub Actions cache.\n    required: false\n    deprecation-message: This input has been superceded by the 'cache-cleanup' input parameter.\n\n  gradle-home-cache-includes:\n    description: Paths within Gradle User Home to cache.\n    required: false\n    default: |\n        caches\n        notifications\n\n  gradle-home-cache-excludes:\n    description: Paths within Gradle User Home to exclude from cache.\n    required: false\n\n  # Job summary configuration\n  add-job-summary:\n    description: Specifies when a Job Summary should be inluded in the action results. Valid values are 'never', 'always' (default), and 'on-failure'.\n    required: false\n    default: 'always'\n\n  add-job-summary-as-pr-comment:\n    description: Specifies when each Job Summary should be added as a PR comment. Valid values are 'never' (default), 'always', and 'on-failure'. No action will be taken if the workflow was not triggered from a pull request.\n    required: false\n    default: 'never'\n\n  # Dependency Graph configuration\n  dependency-graph:\n    description: |\n      Specifies if a GitHub dependency snapshot should be generated for each Gradle build, and if so, how.\n      Valid values are 'disabled' (default), 'generate', 'generate-and-submit', 'generate-submit-and-upload', 'generate-and-upload', and 'download-and-submit'.\n    required: false\n    default: 'disabled'\n\n  dependency-graph-report-dir:\n    description: |\n      Specifies where the dependency graph report will be generated. \n      Paths can relative or absolute. Relative paths are resolved relative to the workspace directory.\n    required: false\n    default: 'dependency-graph-reports'\n\n  dependency-graph-continue-on-failure:\n    description: When 'false' a failure to generate or submit a dependency graph will fail the Step or Job. When 'true' a warning will be emitted but no failure will result.\n    required: false\n    default: true\n\n  dependency-graph-exclude-projects:\n    description: |\n      Gradle projects that should be excluded from dependency graph (regular expression).\n      When set, any matching project will be excluded.\n    required: false\n\n  dependency-graph-include-projects:\n    description: |\n      Gradle projects that should be included in dependency graph (regular expression). \n      When set, only matching projects will be included.\n    required: false\n\n  dependency-graph-exclude-configurations:\n    description: |\n      Gradle configurations that should be included in dependency graph (regular expression). \n      When set, anymatching configurations will be excluded.\n    required: false\n\n  dependency-graph-include-configurations:\n    description: |\n      Gradle configurations that should be included in dependency graph (regular expression). \n      When set, only matching configurations will be included.\n    required: false\n\n  artifact-retention-days:\n    description: Specifies the number of days to retain any artifacts generated by the action. If not set, the default retention settings for the repository will apply.\n    required: false\n\n  # Build Scan configuration\n  build-scan-publish:\n    description: |\n      Set to 'true' to automatically publish build results as a Build Scan on scans.gradle.com.\n      For publication to succeed without user input, you must also provide values for `build-scan-terms-of-use-url` and 'build-scan-terms-of-use-agree'.\n    required: false\n    default: false\n\n  build-scan-terms-of-use-url:\n    description: The URL to the Build Scan® terms of use. This input must be set to 'https://gradle.com/terms-of-service' or 'https://gradle.com/help/legal-terms-of-use'.\n    required: false\n\n  build-scan-terms-of-use-agree:\n    description: Indicate that you agree to the Build Scan® terms of use. This input value must be \"yes\".\n    required: false\n\n  develocity-access-key:\n    description: Develocity access key. Should be set to a secret containing the Develocity Access key.\n    required: false\n\n  develocity-token-expiry:\n    description: The Develocity short-lived access tokens expiry in hours. Default is 2 hours.\n    required: false\n\n  develocity-injection-enabled:\n    description: Enables Develocity injection.\n    required: false\n\n  develocity-url:\n    description: The URL for the Develocity server.\n    required: false\n\n  develocity-allow-untrusted-server:\n    description: Allow communication with an untrusted server; set to _true_ if your Develocity instance is using a self-signed.\n    required: false\n\n  develocity-capture-file-fingerprints:\n    description: Enables capturing the paths and content hashes of each individual input file.\n    required: false\n\n  develocity-enforce-url:\n    description: Enforce the configured Develocity URL over a URL configured in the project's build; set to _true_ to enforce publication of build scans to the configured Develocity URL.\n    required: false\n\n  develocity-plugin-version:\n    description: The version of the Develocity Gradle plugin to apply.\n    required: false\n\n  develocity-ccud-plugin-version:\n    description: The version of the Common Custom User Data Gradle plugin to apply, if any.\n    required: false\n\n  gradle-plugin-repository-url:\n    description: The URL of the repository to use when resolving the Develocity and CCUD plugins; the Gradle Plugin Portal is used by default.\n    required: false\n\n  gradle-plugin-repository-username:\n    description: The username for the repository URL to use when resolving the Develocity and CCUD.\n    required: false\n\n  gradle-plugin-repository-password:\n    description: The password for the repository URL to use when resolving the Develocity and CCUD plugins; Consider using secrets to pass the value to this variable.\n    required: false\n\n  # Wrapper validation configuration\n  validate-wrappers:\n    description: |\n      When 'true' (the default) the action will automatically validate all wrapper jars found in the repository.\n      If the wrapper checksums are not valid, the action will fail.\n    required: false\n    default: true\n\n  allow-snapshot-wrappers:\n    description: |\n      When 'true', wrapper validation will include the checksums of snapshot wrapper jars. \n      Use this if you are running with nightly or snapshot versions of the Gradle wrapper.\n    required: false\n    default: false\n\n  # DEPRECATED ACTION INPUTS\n  arguments:\n    description: Gradle command line arguments (supports multi-line input)\n    required: false\n    deprecation-message: This parameter has been deprecated and removed. It is only left here to allow for better reporting to assist users to migrate.\n\n  # EXPERIMENTAL ACTION INPUTS\n  # The following action properties allow fine-grained tweaking of the action caching behaviour.\n  # These properties are experimental and not (yet) designed for production use, and may change without notice in a subsequent release of `setup-gradle`.\n  # Use at your own risk!\n  gradle-home-cache-strict-match:\n    description: When 'true', the action will not attempt to restore the Gradle User Home entries from other Jobs.\n    required: false\n    default: false\n\n  # INTERNAL ACTION INPUTS\n  # These inputs should not be configured directly, and are only used to pass environmental information to the action\n  workflow-job-context:\n    description: Used to uniquely identify the current job invocation. Defaults to the matrix values for this job; this should not be overridden by users (INTERNAL).\n    required: false\n    default: ${{ toJSON(matrix) }}\n\n  github-token:\n    description: The GitHub token used to authenticate when submitting via the Dependency Submission API.\n    default: ${{ github.token }}\n    required: false\n\noutputs:\n  build-scan-url:\n    description: Link to the Build Scan® generated by a Gradle build. Note that this output applies to a Step executing Gradle, not to the `setup-gradle` Step itself.\n  dependency-graph-file:\n    description: Path to the GitHub Dependency Graph snapshot file generated by a Gradle build. Note that this output applies to a Step executing Gradle, not to the `setup-gradle` Step itself.\n  gradle-version:\n    description: Version of Gradle that was setup by the action\n\nruns:\n  using: node24\n  main: dist/main/index.js\n  post: dist/post/index.js\n"
+        },
+        "v4:setup-gradle/action.yaml": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/composite-tool": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:action.yml": {
+          "found": true,
+          "content": "name: Composite tool\ndescription: A composite action\ninputs:\n  name:\n    description: Who to greet\n    required: true\n  level:\n    description: How loud\n    default: info\n  old:\n    description: The old way\n    required: false\n    deprecationMessage: Use level instead.\noutputs:\n  result:\n    description: The result\n    value: ${{ steps.run.outputs.result }}\nruns:\n  using: composite\n  steps:\n    - id: run\n      run: echo \"result=ok\" >> \"$GITHUB_OUTPUT\"\n      shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/node-tool": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:action.yml": {
+          "found": true,
+          "content": "name: Node tool\ndescription: A JavaScript action which declares an output\ninputs:\n  token:\n    description: A token\n    required: true\n  mode:\n    description: The mode\n    type: string\n    default: fast\noutputs:\n  cache-hit:\n    description: Whether the cache was hit\nruns:\n  using: node20\n  main: dist/index.js\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/node-dynamic": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:action.yml": {
+          "found": true,
+          "content": "name: Node dynamic\ndescription: A JavaScript action which sets its outputs with core.setOutput and declares none\ninputs:\n  filters:\n    description: The filters\n    required: true\nruns:\n  using: node20\n  main: dist/index.js\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/sub-tools": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:tools/lint/action.yml": {
+          "found": false
+        },
+        "v1:tools/lint/action.yaml": {
+          "found": true,
+          "content": "name: Lint\ndescription: An action in a subdirectory with an action.yaml\ninputs:\n  config:\n    description: The configuration file\n    required: true\nruns:\n  using: composite\n  steps:\n    - run: echo lint\n      shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/broken-metadata": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        },
+        "heads/v2": {
+          "found": false
+        },
+        "heads/v4": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:action.yml": {
+          "found": true,
+          "content": "name: Broken\ndescription: The inputs are not a mapping\ninputs:\n  - name\nruns:\n  using: node20\n  main: index.js\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/private-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "7777777777777777777777777777777777777777"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/workflows": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1",
+            "sha": "3333333333333333333333333333333333333333"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v1": {
+          "found": false
+        }
+      },
+      "files": {
+        "v1:.github/workflows/ci.yml": {
+          "found": true,
+          "content": "on:\n  workflow_call:\n    inputs:\n      name:\n        description: Who\n        type: string\n        required: true\n      count:\n        type: number\n        default: 1\n      dry-run:\n        type: boolean\n        required: false\n    secrets:\n      token:\n        required: true\n      extra:\n        required: false\n    outputs:\n      result:\n        description: The result\n        value: ${{ jobs.build.outputs.result }}\npermissions:\n  contents: read\njobs:\n  build:\n    runs-on: ubuntu-latest\n    outputs:\n      result: ${{ steps.x.outputs.r }}\n    steps:\n      - id: x\n        run: echo \"r=1\" >> \"$GITHUB_OUTPUT\"\n"
+        },
+        "3333333333333333333333333333333333333333:.github/workflows/ci.yml": {
+          "found": true,
+          "content": "on:\n  workflow_call:\n    inputs:\n      name:\n        description: Who\n        type: string\n        required: true\n      count:\n        type: number\n        default: 1\n      dry-run:\n        type: boolean\n        required: false\n    secrets:\n      token:\n        required: true\n      extra:\n        required: false\n    outputs:\n      result:\n        description: The result\n        value: ${{ jobs.build.outputs.result }}\npermissions:\n  contents: read\njobs:\n  build:\n    runs-on: ubuntu-latest\n    outputs:\n      result: ${{ steps.x.outputs.r }}\n    steps:\n      - id: x\n        run: echo \"r=1\" >> \"$GITHUB_OUTPUT\"\n"
+        },
+        "v1:.github/workflows/not-reusable.yml": {
+          "found": true,
+          "content": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n"
+        },
+        "v1:.github/workflows/gone.yml": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "google/osv-scanner-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v2.7.0",
+            "sha": "b1d267aea5211fa648d9d442fa64b90dbdcbdd36"
+          }
+        ]
+      },
+      "refs": {
+        "heads/v2.7.0": {
+          "found": false
+        },
+        "tags/v2.7.0": {
+          "sha": "b1d267aea5211fa648d9d442fa64b90dbdcbdd36",
+          "found": true
+        }
+      },
+      "files": {
+        "v2.7.0:.github/workflows/osv-scanner-reusable.yml": {
+          "found": true,
+          "content": "# Copyright 2023 Google LLC\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n# Performs a vulnerability scan with OSV-Scanner and reports the result.\nname: OSV-Scanner single vulnerability scan\n\n\n\non:\n  workflow_call:\n    inputs:\n      scan-args:\n        description: \"Custom osv-scanner arguments (See https://google.github.io/osv-scanner/usage/ for options, you cannot set --format or --output)\"\n        type: string\n        default: |-\n          -r\n          ./\n      results-file-name:\n        description: \"File name of the result SARIF file\"\n        type: string\n        default: results.sarif\n      download-artifact:\n        description: \"Optional artifact to download for scanning\"\n        required: false\n        default: \"\"\n        type: string\n      upload-sarif:\n        description: \"Whether to upload to Security > Code Scanning\"\n        type: boolean\n        required: false\n        default: true\n      fail-on-vuln:\n        description: \"Whether to fail the action on vulnerability found\"\n        type: boolean\n        default: true\n      matrix-property:\n        description: \"Optional string for matrix strategies (E.g. 'amd64-')\"\n        type: string\n        default: \"\"\n      checkout-submodules:\n        description: \"Whether to check out submodules or not. Passed on to `submodules` argument of `actions/checkout`\"\n        type: boolean\n        default: false\n      ref:\n        description: \"Whether to checkout a custom branch/tag/commit for scanning other than the default branch\"\n        type: string\n        default: \"\"\n      export-results:\n        description: \"Whether to export the scan results as job outputs (can fail for large repositories due to size limits)\"\n        type: boolean\n        default: false\n      runs-on:\n        description: \"The runner to use for the scan job (E.g. 'ubuntu-latest', 'ubuntu-24.04', or a self-hosted runner label)\"\n        type: string\n        default: \"ubuntu-latest\"\n    outputs:\n      results:\n        description: \"Results of the scan in JSON format\"\n        value: ${{ jobs.osv-scan.outputs.results }}\n\njobs:\n  osv-scan:\n    runs-on: ${{ inputs.runs-on }}\n    permissions:\n      actions: read\n      contents: read\n      security-events: write\n    outputs:\n      results: ${{ steps.scan.outputs.results }}\n    steps:\n      - id: scan\n        run: echo scan\n"
+        },
+        "b1d267aea5211fa648d9d442fa64b90dbdcbdd36:.github/workflows/osv-scanner-reusable.yml": {
+          "found": true,
+          "content": "# Copyright 2023 Google LLC\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n# Performs a vulnerability scan with OSV-Scanner and reports the result.\nname: OSV-Scanner single vulnerability scan\n\n\n\non:\n  workflow_call:\n    inputs:\n      scan-args:\n        description: \"Custom osv-scanner arguments (See https://google.github.io/osv-scanner/usage/ for options, you cannot set --format or --output)\"\n        type: string\n        default: |-\n          -r\n          ./\n      results-file-name:\n        description: \"File name of the result SARIF file\"\n        type: string\n        default: results.sarif\n      download-artifact:\n        description: \"Optional artifact to download for scanning\"\n        required: false\n        default: \"\"\n        type: string\n      upload-sarif:\n        description: \"Whether to upload to Security > Code Scanning\"\n        type: boolean\n        required: false\n        default: true\n      fail-on-vuln:\n        description: \"Whether to fail the action on vulnerability found\"\n        type: boolean\n        default: true\n      matrix-property:\n        description: \"Optional string for matrix strategies (E.g. 'amd64-')\"\n        type: string\n        default: \"\"\n      checkout-submodules:\n        description: \"Whether to check out submodules or not. Passed on to `submodules` argument of `actions/checkout`\"\n        type: boolean\n        default: false\n      ref:\n        description: \"Whether to checkout a custom branch/tag/commit for scanning other than the default branch\"\n        type: string\n        default: \"\"\n      export-results:\n        description: \"Whether to export the scan results as job outputs (can fail for large repositories due to size limits)\"\n        type: boolean\n        default: false\n      runs-on:\n        description: \"The runner to use for the scan job (E.g. 'ubuntu-latest', 'ubuntu-24.04', or a self-hosted runner label)\"\n        type: string\n        default: \"ubuntu-latest\"\n    outputs:\n      results:\n        description: \"Results of the scan in JSON format\"\n        value: ${{ jobs.osv-scan.outputs.results }}\n\njobs:\n  osv-scan:\n    runs-on: ${{ inputs.runs-on }}\n    permissions:\n      actions: read\n      contents: read\n      security-events: write\n    outputs:\n      results: ${{ steps.scan.outputs.results }}\n    steps:\n      - id: scan\n        run: echo scan\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "pre-commit/action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd:action.yml": {
+          "found": true,
+          "content": "name: pre-commit\ndescription: run pre-commit\ninputs:\n  extra_args:\n    description: options to pass to pre-commit run\n    required: false\n    default: '--all-files'\nruns:\n  using: composite\n  steps:\n  - run: python -m pip install pre-commit\n    shell: bash\n  - run: python -m pip freeze --local\n    shell: bash\n  - uses: actions/cache@v4\n    with:\n      path: ~/.cache/pre-commit\n      key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}\n  - run: pre-commit run --show-diff-on-failure --color=always ${{ inputs.extra_args }}\n    shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v3.0.1",
+            "sha": "2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd"
+          }
+        ]
+      }
+    },
+    "actions/jekyll-build-pages": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "44a6e6beabd48582f863aeeb6cb2151cc1716697:action.yml": {
+          "found": true,
+          "content": "name: 'Build Jekyll for GitHub Pages'\ndescription: 'A simple GitHub Action for producing Jekyll build artifacts compatible with GitHub Pages'\nauthor: 'GitHub'\ninputs:\n  source:\n    description: 'Directory where the source files reside.'\n    required: false\n    default: ./\n  destination:\n    description: 'Output directory of the build. Although it can be nested inside the source, it cannot be the same as the source directory.'\n    required: false\n    default: ./_site\n  future:\n    description: 'Publishes posts with a future date. When set to true, the build is made with the --future option which overrides the future option that may be set in a Jekyll configuration file.'\n    required: false\n    default: false\n  build_revision:\n    description: 'The SHA-1 of the git commit for which the build is running. Default to GITHUB_SHA.'\n    required: false\n    default: ${{ github.sha }}\n  verbose:\n    description: 'Verbose output'\n    required: false\n    default: true\n  token:\n    description: 'GitHub token'\n    required: true\n    default: ${{ github.token }}\nruns:\n  using: 'docker'\n  image: 'docker://ghcr.io/actions/jekyll-build-pages:v1.0.13'\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1.0.13",
+            "sha": "44a6e6beabd48582f863aeeb6cb2151cc1716697"
+          }
+        ]
+      }
+    },
+    "aquasecurity/trivy-action": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "57a97c7e7821a5776cebc9bb87c984fa69cba8f1:action.yaml": {
+          "found": true,
+          "content": "name: 'Aqua Security Trivy'\ndescription: 'Scans container images for vulnerabilities with Trivy'\nauthor: 'Aqua Security'\n\ninputs:\n  scan-type:\n    description: 'Scan type to use for scanning vulnerability'\n    required: false\n    default: 'image'\n  image-ref:\n    description: 'image reference (for backward compatibility)'\n    required: false\n  input:\n    description: 'reference of tar file to scan'\n    required: false\n    default: ''\n  scan-ref:\n    description: 'Scan reference'\n    required: false\n    default: '.'\n  exit-code:\n    description: 'exit code when vulnerabilities were found'\n    required: false\n  ignore-unfixed:\n    description: 'ignore unfixed vulnerabilities'\n    required: false\n    default: 'false'\n  vuln-type: # TODO: rename to pkg-types\n    description: 'comma-separated list of vulnerability types (os,library)'\n    required: false\n    default: 'os,library'\n  severity:\n    description: 'severities of vulnerabilities to be displayed'\n    required: false\n    default: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'\n  format:\n    description: 'output format (table, json, template)'\n    required: false\n    default: 'table'\n  template:\n    description: 'use an existing template for rendering output (@/contrib/gitlab.tpl, @/contrib/junit.tpl, @/contrib/html.tpl)'\n    required: false\n    default: ''\n  output:\n    description: 'writes results to a file with the specified file name'\n    required: false\n    default: ''\n  skip-dirs:\n    description: 'comma separated list of directories where traversal is skipped'\n    required: false\n    default: ''\n  skip-files:\n    description: 'comma separated list of files to be skipped'\n    required: false\n    default: ''\n  cache-dir:\n    description: 'specify where the cache is stored'\n    required: false\n    default: '${{ github.workspace }}/.cache/trivy'\n  timeout:\n    description: 'timeout (default 5m0s)'\n    required: false\n    default: ''\n  ignore-policy:\n    description: 'filter vulnerabilities with OPA rego language'\n    required: false\n    default: ''\n  hide-progress:\n    description: 'suppress progress bar and log output'\n    required: false\n  list-all-pkgs:\n    description: 'output all packages regardless of vulnerability'\n    required: false\n    default: 'false'\n  scanners:\n    description: 'comma-separated list of what security issues to detect'\n    required: false\n    default: ''\n  trivyignores:\n    description: 'comma-separated list of relative paths within the repository to one or more .trivyignore files, or a single .trivyignore.yaml file.'\n    required: false\n    default: ''\n  github-pat:\n    description: 'GitHub Personal Access Token (PAT) for submitting SBOM to GitHub Dependency Snapshot API'\n    required: false\n  trivy-config:\n    description: 'path to trivy.yaml config'\n    required: false\n  tf-vars:\n    description: \"path to terraform tfvars file\"\n    required: false\n  limit-severities-for-sarif:\n    description: 'limit severities for SARIF format'\n    required: false\n  docker-host:\n    description: 'unix domain socket path to use for docker scanning, ex. unix:///var/run/docker.sock'\n    required: false\n  version:\n    description: 'Trivy version to use'\n    required: false\n    default: 'v0.69.3'\n  cache:\n    description: 'Used to specify whether caching is needed. Set to false, if you would like to disable caching.'\n    required: false\n    default: 'true'\n  skip-setup-trivy:\n    description: 'skip calling the setup-trivy action to install trivy'\n    required: false\n    default: 'false'\n  token-setup-trivy:\n    description: >\n      `token-setup-trivy` is required when `github.token` in invalid for `https://github.com` server.\n      See https://github.com/aquasecurity/setup-trivy/?tab=readme-ov-file#install-trivy-with-non-default-token for more details.\n      `token-setup-trivy` is only used to fetch the Trivy repository in `setup-trivy`\n    required: false\n    ## ${{ github.token }} is default value for actions/checkout\n    ## cf. https://github.com/actions/checkout/blob/eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871/action.yml#L24\n    default: ${{ github.token }}\n\nruns:\n  using: 'composite'\n  steps:\n    - name: Install Trivy\n      if: ${{ inputs.skip-setup-trivy == 'false' }}\n      # Pin to hash instead of tag for aquasecurity/setup-trivy action so that GitHub Actions \n      # \"allowing select actions\" feature can be used to whitelist the dependent action by a hash.\n      # This is needed since some organizations have a policy to only allow pinned 3rd party actions to \n      # be used.\n      uses: aquasecurity/setup-trivy@e6c2c5e321ed9123bda567646e2f96565e34abe1 # equivalent to `v0.2.4`\n      with:\n        version: ${{ inputs.version }}\n        cache: ${{ inputs.cache }}\n        token: ${{ inputs.token-setup-trivy }}\n\n    - name: Get current date\n      id: date\n      shell: bash\n      run: echo \"date=$(date +'%Y-%m-%d')\" >> $GITHUB_OUTPUT\n\n    - name: Restore DB from cache\n      if: ${{ inputs.cache == 'true' }}\n      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4\n      with:\n        path: ${{ inputs.cache-dir }}\n        key: cache-trivy-${{ steps.date.outputs.date }}\n        restore-keys: cache-trivy-\n\n    - name: Set GitHub Path\n      run: echo \"$GITHUB_ACTION_PATH\" >> $GITHUB_PATH # zizmor: ignore[github-env]\n      shell: bash\n      env:\n        GITHUB_ACTION_PATH: ${{ github.action_path }}\n\n    # Create and Clear Trivy Envs file\n    # See #422 for context\n    - name: Clear Trivy Envs file\n      shell: bash\n      run: |\n        rm -f trivy_envs.txt\n        touch trivy_envs.txt\n\n    - name: Set Trivy environment variables\n      shell: bash\n      env:\n        INPUT_INPUT: ${{ inputs.input }}\n        INPUT_EXIT_CODE: ${{ inputs.exit-code }}\n        INPUT_IGNORE_UNFIXED: ${{ inputs.ignore-unfixed }}\n        INPUT_VULN_TYPE: ${{ inputs.vuln-type }}\n        INPUT_SEVERITY: ${{ inputs.severity }}\n        INPUT_FORMAT: ${{ inputs.format }}\n        INPUT_TEMPLATE: ${{ inputs.template }}\n        INPUT_OUTPUT: ${{ inputs.output }}\n        INPUT_SKIP_DIRS: ${{ inputs.skip-dirs }}\n        INPUT_SKIP_FILES: ${{ inputs.skip-files }}\n        INPUT_TIMEOUT: ${{ inputs.timeout }}\n        INPUT_IGNORE_POLICY: ${{ inputs.ignore-policy }}\n        INPUT_HIDE_PROGRESS: ${{ inputs.hide-progress }}\n        INPUT_LIST_ALL_PKGS: ${{ inputs.list-all-pkgs }}\n        INPUT_SCANNERS: ${{ inputs.scanners }}\n        INPUT_TRIVY_CONFIG: ${{ inputs.trivy-config }}\n        INPUT_TF_VARS: ${{ inputs.tf-vars }}\n        INPUT_DOCKER_HOST: ${{ inputs.docker-host }}\n      run: |\n        # Note: There is currently no way to distinguish between undefined variables and empty strings in GitHub Actions.\n        # This limitation affects how we handle default values and empty inputs.\n        # For more information, see: https://github.com/actions/runner/issues/924\n\n        # The following logic implements the configuration priority described in the README:\n        #\n        # Inputs\n        # Environment Variables\n        # Config File\n        # Defaults\n        #\n        # As noted above defaults are awkward to handle as GitHub Actions will inject those values as the input\n        # if the caller doesn't provide them, thus if the input matches the default we don't set it as we\n        # can't tell the difference.  Plus if we did set it when it was the default value then it could potentially\n        # override an external environment variable, or something in the callers configuration file, which then wouldn't\n        # match the configuration priority that is documented.\n        set_env_var_if_provided() {\n          local var_name=\"$1\"\n          local input_value=\"$2\"\n          local default_value=\"$3\"\n\n          if [ -n \"$input_value\" ] && [ \"$input_value\" != \"$default_value\" ]; then\n            # If action was provided with explicit input by the caller set that\n            # Use printf %q to safely escape special characters and prevent command injection\n            printf 'export %s=%q\\n' \"$var_name\" \"$input_value\" >> trivy_envs.txt\n          fi\n        }\n\n        # Set environment variables, handling those with default values\n        # cf. https://aquasecurity.github.io/trivy/latest/docs/configuration/#environment-variables\n        set_env_var_if_provided \"TRIVY_INPUT\" \"$INPUT_INPUT\" \"\"\n        set_env_var_if_provided \"TRIVY_EXIT_CODE\" \"$INPUT_EXIT_CODE\" \"\"\n        set_env_var_if_provided \"TRIVY_IGNORE_UNFIXED\" \"$INPUT_IGNORE_UNFIXED\" \"false\"\n        set_env_var_if_provided \"TRIVY_PKG_TYPES\" \"$INPUT_VULN_TYPE\" \"os,library\"\n        set_env_var_if_provided \"TRIVY_SEVERITY\" \"$INPUT_SEVERITY\" \"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL\"\n        set_env_var_if_provided \"TRIVY_FORMAT\" \"$INPUT_FORMAT\" \"table\"\n        set_env_var_if_provided \"TRIVY_TEMPLATE\" \"$INPUT_TEMPLATE\" \"\"\n        set_env_var_if_provided \"TRIVY_OUTPUT\" \"$INPUT_OUTPUT\" \"\"\n        set_env_var_if_provided \"TRIVY_SKIP_DIRS\" \"$INPUT_SKIP_DIRS\" \"\"\n        set_env_var_if_provided \"TRIVY_SKIP_FILES\" \"$INPUT_SKIP_FILES\" \"\"\n        set_env_var_if_provided \"TRIVY_TIMEOUT\" \"$INPUT_TIMEOUT\" \"\"\n        set_env_var_if_provided \"TRIVY_IGNORE_POLICY\" \"$INPUT_IGNORE_POLICY\" \"\"\n        set_env_var_if_provided \"TRIVY_QUIET\" \"$INPUT_HIDE_PROGRESS\" \"\"\n        set_env_var_if_provided \"TRIVY_LIST_ALL_PKGS\" \"$INPUT_LIST_ALL_PKGS\" \"false\"\n        set_env_var_if_provided \"TRIVY_SCANNERS\" \"$INPUT_SCANNERS\" \"\"\n        set_env_var_if_provided \"TRIVY_CONFIG\" \"$INPUT_TRIVY_CONFIG\" \"\"\n        set_env_var_if_provided \"TRIVY_TF_VARS\" \"$INPUT_TF_VARS\" \"\"\n        set_env_var_if_provided \"TRIVY_DOCKER_HOST\" \"$INPUT_DOCKER_HOST\" \"\"\n\n    - name: Run Trivy\n      shell: bash\n      run: entrypoint.sh\n      env:\n        # For shell script\n        # > If the action is written using a composite, then it will not automatically get INPUT_<VARIABLE_NAME>\n        # cf. https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#example-specifying-inputs\n        INPUT_SCAN_TYPE: ${{ inputs.scan-type }}\n        INPUT_IMAGE_REF: ${{ inputs.image-ref }}\n        INPUT_SCAN_REF: ${{ inputs.scan-ref }}\n        INPUT_TRIVYIGNORES: ${{ inputs.trivyignores }}\n        INPUT_GITHUB_PAT: ${{ inputs.github-pat }}\n        INPUT_LIMIT_SEVERITIES_FOR_SARIF: ${{ inputs.limit-severities-for-sarif }}\n\n        # For Trivy\n        TRIVY_CACHE_DIR: ${{ inputs.cache-dir }} # Always set\n\n    # Remove Trivy envs to keep envs within this action and avoid env leaks\n    # See #422 for context\n    - name: Remove Trivy Envs file\n      if: ${{ always() }}\n      shell: bash\n      run: |\n        rm -f trivy_envs.txt\n"
+        },
+        "57a97c7e7821a5776cebc9bb87c984fa69cba8f1:action.yml": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v0.35.0",
+            "sha": "57a97c7e7821a5776cebc9bb87c984fa69cba8f1"
+          }
+        ]
+      }
+    },
+    "aquasecurity/setup-trivy": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "e6c2c5e321ed9123bda567646e2f96565e34abe1:action.yaml": {
+          "found": true,
+          "content": "name: 'Aqua Security Trivy installer'\ndescription: 'Install Trivy binary from release page'\nauthor: 'Aqua Security'\n\ninputs:\n  version:\n    description: 'Trivy version to install'\n    required: false\n    default: 'latest'\n  path:\n    description: 'Path in runner to install Trivy. Trivy will be installed in \"<path>/trivy-bin\" dir (\"$HOME/.local/bin/trivy-bin\" by default)'\n    required: false\n    default: '$HOME/.local/bin'\n  cache:\n    description: 'Used to specify whether caching is needed. Set to false, if you would like to disable caching.'\n    required: false\n    default: 'false'\n  token:\n    description: >\n      Access token used to check out the Trivy repository.\n      The token is required when using GitHub Enterprise Server (GHES).\n      https://github.com/actions/create-github-app-token can be used to obtain such a token.\n      The token should be limited to read access only for public repositories.\n      See more details in https://github.com/aquasecurity/setup-trivy/issues/10\n    required: false\n    ## ${{ github.token }} is default value for actions/checkout\n    ## cf. https://github.com/actions/checkout/blob/eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871/action.yml#L24\n    default: ${{ github.token }}\n  github-server-url:\n    description: The base URL for the GitHub instance to clone aquasecurity/trivy from. Defaults to public https://github.com\n    required: false\n    ## Note: we explicitly set the default to public rather than the current server api (in case of private GHES)\n    ## but it can optionally be set to '${{ github.server_url }}' on GHES if the repository has been mirrored (e.g., via actions/actions-sync).\n    ## Ref. https://github.com/aquasecurity/setup-trivy/issues/10 and https://github.com/aquasecurity/setup-trivy/pull/16\n    default: 'https://github.com'\n\nruns:\n  using: 'composite'\n  steps:\n    - name: Binary dir\n      id: binary-dir\n      shell: bash\n      run: echo \"dir=${{ inputs.path }}/trivy-bin\" >> $GITHUB_OUTPUT\n\n    ## Don't cache `latest` version\n    - name: Check the version for caching\n      if: ${{ inputs.cache == 'true' && inputs.version == 'latest' }}\n      shell: bash\n      run: |\n        echo \"'setup-trivy' doesn't currently support caching the 'latest' version\"\n        echo \"read https://github.com/aquasecurity/setup-trivy?tab=readme-ov-file#caching for more details\"\n\n    - name: Restore Trivy binary from cache\n      if: ${{ inputs.cache == 'true' && inputs.version != 'latest' }}\n      id: cache\n      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4\n      with:\n        path: ${{ steps.binary-dir.outputs.dir }}\n        key: trivy-binary-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}\n\n    - name: Checkout install script\n      if: steps.cache.outputs.cache-hit != 'true'\n      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0\n      with:\n        repository: aquasecurity/trivy\n        sparse-checkout: |\n          contrib\n        path: trivy\n        fetch-depth: 1\n        github-server-url: ${{ inputs.github-server-url }}\n        token: ${{ inputs.token }}\n\n      ## Install Trivy using install script,\n      ## Copy the `contrib` directory to the directory with the binary\n      ## Remove the `trivy` directory produced by the checkout step, as it may cause errors in linters/checks in the calling code.\n    - name: Install Trivy\n      if: steps.cache.outputs.cache-hit != 'true'\n      shell: bash\n      run: |\n        echo \"installing Trivy binary\"\n        bash ./trivy/contrib/install.sh -b ${{ steps.binary-dir.outputs.dir }} ${{ inputs.version }}\n        cp -r ./trivy/contrib ${{ steps.binary-dir.outputs.dir }}/contrib\n        rm -rf ./trivy\n\n    ## Add the Trivy binary, retrieved from cache or installed by a script, to $GITHUB_PATH\n    - name: Add Trivy binary to $GITHUB_PATH\n      shell: bash\n      run: echo ${{ steps.binary-dir.outputs.dir }} >> $GITHUB_PATH\n"
+        },
+        "e6c2c5e321ed9123bda567646e2f96565e34abe1:action.yml": {
+          "found": false
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "reviewdog/action-actionlint": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "a8ac3eea598697a830f7d8e701fc9fcbfde88974:action.yml": {
+          "found": true,
+          "content": "name: \"actionlint with reviewdog\"\ndescription: \"run actionlint with reviewdog\"\nauthor: \"@shogo82148\"\ninputs:\n  github_token:\n    description: \"GITHUB_TOKEN.\"\n    default: \"${{ github.token }}\"\n    required: true\n  tool_name:\n    description: \"Tool name to use for reviewdog reporter\"\n    default: \"actionlint\"\n    required: true\n  level:\n    description: \"Report level for reviewdog [info,warning,error]\"\n    default: \"error\"\n    required: true\n  reporter:\n    description: |\n      Reporter of reviewdog command [github-pr-check,github-pr-review,github-check].\n      Default is github-pr-check.\n      github-pr-review can use Markdown and add a link to rule page in reviewdog reports.\n    default: \"github-pr-check\"\n    required: true\n  filter_mode:\n    description: |\n      Filtering mode for the reviewdog command [added,diff_context,file,nofilter].\n      Default is file.\n    default: \"file\"\n    required: true\n  fail_level:\n    description: |\n      If set to `none`, always use exit code 0 for reviewdog. Otherwise, exit code 1 for reviewdog if it finds at least 1 issue with severity greater than or equal to the given level.\n      Possible values: [none,any,info,warning,error]\n      Default is `none`.\n    default: \"none\"\n  fail_on_error:\n    description: |\n      Deprecated, use `fail_level` instead.\n      Exit code for reviewdog when errors are found [true,false]\n      Default is `false`.\n    deprecationMessage: Deprecated, use `fail_level` instead.\n    default: \"false\"\n    required: true\n  reviewdog_flags:\n    description: \"Additional reviewdog flags\"\n    default: \"\"\n    required: false\n  actionlint_flags:\n    description: \"Additional actionlint flags\"\n    default: \"\"\n    required: false\nruns:\n  using: \"docker\"\n  image: 'docker://ghcr.io/reviewdog/action-actionlint:v1.80.0@sha256:63c322e8c59b34c23f284aec4046dc284bc45e6e304377a91efd6ce25035a15d'\n  entrypoint: /entrypoint.sh\nbranding:\n  color: red\n  icon: check-circle\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      },
+      "tags": {
+        "tags": [
+          {
+            "name": "v1.80.0",
+            "sha": "a8ac3eea598697a830f7d8e701fc9fcbfde88974"
+          }
+        ]
+      }
+    },
+    "actions/cache": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "0400d5f644dc74513175e3cd8d07132dd4860809:action.yml": {
+          "found": true,
+          "content": "name: 'Cache'\ndescription: 'Cache artifacts like dependencies and build outputs to improve workflow execution time'\nauthor: 'GitHub'\ninputs:\n  path:\n    description: 'A list of files, directories, and wildcard patterns to cache and restore'\n    required: true\n  key:\n    description: 'An explicit key for restoring and saving the cache'\n    required: true\n  restore-keys:\n    description: 'An ordered multiline string listing the prefix-matched keys, that are used for restoring stale cache if no cache hit occurred for key. Note `cache-hit` returns false in this case.'\n    required: false\n  upload-chunk-size:\n    description: 'The chunk size used to split up large files during upload, in bytes'\n    required: false\n  enableCrossOsArchive:\n    description: 'An optional boolean when enabled, allows windows runners to save or restore caches that can be restored or saved respectively on other platforms'\n    default: 'false'\n    required: false\n  fail-on-cache-miss:\n    description: 'Fail the workflow if cache entry is not found'\n    default: 'false'\n    required: false\n  lookup-only:\n    description: 'Check if a cache entry exists for the given input(s) (key, restore-keys) without downloading the cache'\n    default: 'false'\n    required: false\n  save-always:\n    description: 'Run the post step to save the cache even if another step before fails'\n    default: 'false'\n    required: false\n    deprecationMessage: |\n      save-always does not work as intended and will be removed in a future release.\n      A separate `actions/cache/restore` step should be used instead.\n      See https://github.com/actions/cache/tree/main/save#always-save-cache for more details.\noutputs:\n  cache-hit:\n    description: 'A boolean value to indicate an exact match was found for the primary key'\nruns:\n  using: 'node20'\n  main: 'dist/restore/index.js'\n  post: 'dist/save/index.js'\n  post-if: \"success()\"\nbranding:\n  icon: 'archive'\n  color: 'gray-dark'\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/composite-loose": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "1111111111111111111111111111111111111111:action.yml": {
+          "found": true,
+          "content": "name: Loose\ndescription: A composite action which pins some of what it uses\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n    - uses: ./local-action\n    - uses: docker://alpine:3\n    - uses: docker://alpine@sha256:abababababababababababababababababababababababababababababababab\n    - uses: example/leaf@2222222222222222222222222222222222222222\n    - uses: example/branchy@main\n    - uses: example/dynamic@${{ inputs.ref }}\n    - run: echo\n      shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/leaf": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "2222222222222222222222222222222222222222:action.yml": {
+          "found": true,
+          "content": "name: Leaf\ndescription: A composite action with a step which uses a tag\nruns:\n  using: composite\n  steps:\n    - uses: actions/setup-node@v4\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/docker-tag": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "4444444444444444444444444444444444444444:action.yml": {
+          "found": true,
+          "content": "name: Docker tag\ndescription: A Docker action\nruns:\n  using: docker\n  image: docker://alpine:3.19\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/docker-digest": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "4444444444444444444444444444444444444444:action.yml": {
+          "found": true,
+          "content": "name: Docker digest\ndescription: A Docker action\nruns:\n  using: docker\n  image: docker://alpine@sha256:abababababababababababababababababababababababababababababababab\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/dockerfile": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "4444444444444444444444444444444444444444:action.yml": {
+          "found": true,
+          "content": "name: Dockerfile\ndescription: A Docker action which builds its image\nruns:\n  using: docker\n  image: Dockerfile\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/tidy": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "3333333333333333333333333333333333333334:action.yml": {
+          "found": true,
+          "content": "name: Tidy\ndescription: A composite action which pins everything\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@3333333333333333333333333333333333333334\n    - uses: docker://alpine@sha256:abababababababababababababababababababababababababababababababab\n    - run: echo\n      shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/outer": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "4444444444444444444444444444444444444444:action.yml": {
+          "found": true,
+          "content": "name: Outer\ndescription: Uses a pinned action which uses a pinned action\nruns:\n  using: composite\n  steps:\n    - uses: example/inner@5555555555555555555555555555555555555556\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/inner": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "5555555555555555555555555555555555555556:action.yml": {
+          "found": true,
+          "content": "name: Inner\ndescription: Has a tag and a pinned action\nruns:\n  using: composite\n  steps:\n    - uses: actions/setup-node@v4\n    - uses: example/deep@6666666666666666666666666666666666666666\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/deep": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "6666666666666666666666666666666666666666:action.yml": {
+          "found": true,
+          "content": "name: Deep\ndescription: Three levels down\nruns:\n  using: composite\n  steps:\n    - uses: actions/setup-python@v5\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/cycle-a": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "7777777777777777777777777777777777777778:action.yml": {
+          "found": true,
+          "content": "name: A\ndescription: Uses B\nruns:\n  using: composite\n  steps:\n    - uses: example/cycle-b@8888888888888888888888888888888888888889\n    - uses: actions/setup-go@v5\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/cycle-b": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "8888888888888888888888888888888888888889:action.yml": {
+          "found": true,
+          "content": "name: B\ndescription: Uses A and a tag\nruns:\n  using: composite\n  steps:\n    - uses: example/cycle-a@7777777777777777777777777777777777777778\n    - uses: docker://alpine:edge\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/many": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "4444444444444444444444444444444444444444:action.yml": {
+          "found": true,
+          "content": "name: Many\ndescription: Many steps with tags\nruns:\n  using: composite\n  steps:\n    - uses: example/one@v1\n    - uses: example/two@v1\n    - uses: example/three@v1\n    - uses: example/four@v1\n    - uses: example/five@v1\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    },
+    "example/parallel": {
+      "repo": {
+        "archived": false,
+        "default_branch": "main"
+      },
+      "files": {
+        "9999999999999999999999999999999999999999:action.yml": {
+          "found": true,
+          "content": "name: Parallel\ndescription: A composite action with a parallel group\nruns:\n  using: composite\n  steps:\n    - parallel:\n        - uses: actions/cache@v4\n        - uses: docker://alpine:3\n        - run: echo\n          shell: bash\n"
+        }
+      },
+      "advisories": {
+        "list": []
+      }
+    }
+  }
+}
